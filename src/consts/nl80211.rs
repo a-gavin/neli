@@ -1,0 +1,737 @@
+use linux_raw_sys::netlink::*;
+use neli_proc_macros::neli_enum;
+
+use crate::{self as neli};
+
+#[allow(missing_docs)]
+#[neli_enum(serialized_type = "u8")]
+pub enum Nl80211Cmd {
+    Unspecified = nl80211_commands::NL80211_CMD_UNSPEC as u8,
+    GetWiphy = nl80211_commands::NL80211_CMD_GET_WIPHY as u8,
+    SetWiphy = nl80211_commands::NL80211_CMD_SET_WIPHY as u8,
+    NewWiphy = nl80211_commands::NL80211_CMD_NEW_WIPHY as u8,
+    DelWiphy = nl80211_commands::NL80211_CMD_DEL_WIPHY as u8,
+    GetInterface = nl80211_commands::NL80211_CMD_GET_INTERFACE as u8,
+    SetInterface = nl80211_commands::NL80211_CMD_SET_INTERFACE as u8,
+    NewInterface = nl80211_commands::NL80211_CMD_NEW_INTERFACE as u8,
+    DelInterface = nl80211_commands::NL80211_CMD_DEL_INTERFACE as u8,
+    GetKey = nl80211_commands::NL80211_CMD_GET_KEY as u8,
+    SetKey = nl80211_commands::NL80211_CMD_SET_KEY as u8,
+    NewKey = nl80211_commands::NL80211_CMD_NEW_KEY as u8,
+    DelKey = nl80211_commands::NL80211_CMD_DEL_KEY as u8,
+    GetBeacon = nl80211_commands::NL80211_CMD_GET_BEACON as u8,
+    SetBeacon = nl80211_commands::NL80211_CMD_SET_BEACON as u8,
+    StartAp = nl80211_commands::NL80211_CMD_START_AP as u8,
+    NewBeacon = nl80211_commands::NL80211_CMD_NEW_BEACON as u8,
+    StopAp = nl80211_commands::NL80211_CMD_STOP_AP as u8,
+    DelBeacon = nl80211_commands::NL80211_CMD_DEL_BEACON as u8,
+    GetStation = nl80211_commands::NL80211_CMD_GET_STATION as u8,
+    SetStation = nl80211_commands::NL80211_CMD_SET_STATION as u8,
+    NewStation = nl80211_commands::NL80211_CMD_NEW_STATION as u8,
+    DelStation = nl80211_commands::NL80211_CMD_DEL_STATION as u8,
+    GetMpath = nl80211_commands::NL80211_CMD_GET_MPATH as u8,
+    SetMpath = nl80211_commands::NL80211_CMD_SET_MPATH as u8,
+    NewMpath = nl80211_commands::NL80211_CMD_NEW_MPATH as u8,
+    DelMpath = nl80211_commands::NL80211_CMD_DEL_MPATH as u8,
+    SetBss = nl80211_commands::NL80211_CMD_SET_BSS as u8,
+    SetReg = nl80211_commands::NL80211_CMD_SET_REG as u8,
+    ReqSetReg = nl80211_commands::NL80211_CMD_REQ_SET_REG as u8,
+    GetMeshConfig = nl80211_commands::NL80211_CMD_GET_MESH_CONFIG as u8,
+    SetMeshConfig = nl80211_commands::NL80211_CMD_SET_MESH_CONFIG as u8,
+    SetMgmtExtraIe = nl80211_commands::NL80211_CMD_SET_MGMT_EXTRA_IE as u8,
+    GetReg = nl80211_commands::NL80211_CMD_GET_REG as u8,
+    GetScan = nl80211_commands::NL80211_CMD_GET_SCAN as u8,
+    TriggerScan = nl80211_commands::NL80211_CMD_TRIGGER_SCAN as u8,
+    NewScanResults = nl80211_commands::NL80211_CMD_NEW_SCAN_RESULTS as u8,
+    ScanAborted = nl80211_commands::NL80211_CMD_SCAN_ABORTED as u8,
+    RegChange = nl80211_commands::NL80211_CMD_REG_CHANGE as u8,
+    Authenticate = nl80211_commands::NL80211_CMD_AUTHENTICATE as u8,
+    Associate = nl80211_commands::NL80211_CMD_ASSOCIATE as u8,
+    Deauthenticate = nl80211_commands::NL80211_CMD_DEAUTHENTICATE as u8,
+    Disassociate = nl80211_commands::NL80211_CMD_DISASSOCIATE as u8,
+    MichaelMicFailure = nl80211_commands::NL80211_CMD_MICHAEL_MIC_FAILURE as u8,
+    RegBeaconHint = nl80211_commands::NL80211_CMD_REG_BEACON_HINT as u8,
+    JoinIbss = nl80211_commands::NL80211_CMD_JOIN_IBSS as u8,
+    LeaveIbss = nl80211_commands::NL80211_CMD_LEAVE_IBSS as u8,
+    Testmode = nl80211_commands::NL80211_CMD_TESTMODE as u8,
+    Connect = nl80211_commands::NL80211_CMD_CONNECT as u8,
+    Roam = nl80211_commands::NL80211_CMD_ROAM as u8,
+    Disconnect = nl80211_commands::NL80211_CMD_DISCONNECT as u8,
+    SetWiphyNetns = nl80211_commands::NL80211_CMD_SET_WIPHY_NETNS as u8,
+    GetSurvey = nl80211_commands::NL80211_CMD_GET_SURVEY as u8,
+    NewSurveyResults = nl80211_commands::NL80211_CMD_NEW_SURVEY_RESULTS as u8,
+    SetPmksa = nl80211_commands::NL80211_CMD_SET_PMKSA as u8,
+    DelPmksa = nl80211_commands::NL80211_CMD_DEL_PMKSA as u8,
+    FlushPmksa = nl80211_commands::NL80211_CMD_FLUSH_PMKSA as u8,
+    RemainOnChannel = nl80211_commands::NL80211_CMD_REMAIN_ON_CHANNEL as u8,
+    CancelRemainOnChannel = nl80211_commands::NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL as u8,
+    SetTxBitrateMask = nl80211_commands::NL80211_CMD_SET_TX_BITRATE_MASK as u8,
+    RegisterFrame = nl80211_commands::NL80211_CMD_REGISTER_FRAME as u8,
+    RegisterAction = nl80211_commands::NL80211_CMD_REGISTER_ACTION as u8,
+    Frame = nl80211_commands::NL80211_CMD_FRAME as u8,
+    Action = nl80211_commands::NL80211_CMD_ACTION as u8,
+    FrameTxStatus = nl80211_commands::NL80211_CMD_FRAME_TX_STATUS as u8,
+    ActionTxStatus = nl80211_commands::NL80211_CMD_ACTION_TX_STATUS as u8,
+    SetPowerSave = nl80211_commands::NL80211_CMD_SET_POWER_SAVE as u8,
+    GetPowerSave = nl80211_commands::NL80211_CMD_GET_POWER_SAVE as u8,
+    SetCqm = nl80211_commands::NL80211_CMD_SET_CQM as u8,
+    NotifyCqm = nl80211_commands::NL80211_CMD_NOTIFY_CQM as u8,
+    SetChannel = nl80211_commands::NL80211_CMD_SET_CHANNEL as u8,
+    SetWdsPeer = nl80211_commands::NL80211_CMD_SET_WDS_PEER as u8,
+    FrameWaitCancel = nl80211_commands::NL80211_CMD_FRAME_WAIT_CANCEL as u8,
+    JoinMesh = nl80211_commands::NL80211_CMD_JOIN_MESH as u8,
+    LeaveMesh = nl80211_commands::NL80211_CMD_LEAVE_MESH as u8,
+    UnprotDeauthenticate = nl80211_commands::NL80211_CMD_UNPROT_DEAUTHENTICATE as u8,
+    UnprotDisassociate = nl80211_commands::NL80211_CMD_UNPROT_DISASSOCIATE as u8,
+    NewPeerCandidate = nl80211_commands::NL80211_CMD_NEW_PEER_CANDIDATE as u8,
+    GetWowlan = nl80211_commands::NL80211_CMD_GET_WOWLAN as u8,
+    SetWowlan = nl80211_commands::NL80211_CMD_SET_WOWLAN as u8,
+    StartSchedScan = nl80211_commands::NL80211_CMD_START_SCHED_SCAN as u8,
+    StopSchedScan = nl80211_commands::NL80211_CMD_STOP_SCHED_SCAN as u8,
+    SchedScanResults = nl80211_commands::NL80211_CMD_SCHED_SCAN_RESULTS as u8,
+    SchedScanStopped = nl80211_commands::NL80211_CMD_SCHED_SCAN_STOPPED as u8,
+    SetRekeyOffload = nl80211_commands::NL80211_CMD_SET_REKEY_OFFLOAD as u8,
+    PmksaCandidate = nl80211_commands::NL80211_CMD_PMKSA_CANDIDATE as u8,
+    TdlsOper = nl80211_commands::NL80211_CMD_TDLS_OPER as u8,
+    TdlsMgmt = nl80211_commands::NL80211_CMD_TDLS_MGMT as u8,
+    UnexpectedFrame = nl80211_commands::NL80211_CMD_UNEXPECTED_FRAME as u8,
+    ProbeClient = nl80211_commands::NL80211_CMD_PROBE_CLIENT as u8,
+    RegisterBeacons = nl80211_commands::NL80211_CMD_REGISTER_BEACONS as u8,
+    Unexpected4addrFrame = nl80211_commands::NL80211_CMD_UNEXPECTED_4ADDR_FRAME as u8,
+    SetNoackMap = nl80211_commands::NL80211_CMD_SET_NOACK_MAP as u8,
+    ChSwitchNotify = nl80211_commands::NL80211_CMD_CH_SWITCH_NOTIFY as u8,
+    StartP2pDevice = nl80211_commands::NL80211_CMD_START_P2P_DEVICE as u8,
+    StopP2pDevice = nl80211_commands::NL80211_CMD_STOP_P2P_DEVICE as u8,
+    ConnFailed = nl80211_commands::NL80211_CMD_CONN_FAILED as u8,
+    SetMcastRate = nl80211_commands::NL80211_CMD_SET_MCAST_RATE as u8,
+    SetMacAcl = nl80211_commands::NL80211_CMD_SET_MAC_ACL as u8,
+    RadarDetect = nl80211_commands::NL80211_CMD_RADAR_DETECT as u8,
+    GetProtocolFeatures = nl80211_commands::NL80211_CMD_GET_PROTOCOL_FEATURES as u8,
+    UpdateFtIes = nl80211_commands::NL80211_CMD_UPDATE_FT_IES as u8,
+    FtEvent = nl80211_commands::NL80211_CMD_FT_EVENT as u8,
+    CritProtocolStart = nl80211_commands::NL80211_CMD_CRIT_PROTOCOL_START as u8,
+    CritProtocolStop = nl80211_commands::NL80211_CMD_CRIT_PROTOCOL_STOP as u8,
+    GetCoalesce = nl80211_commands::NL80211_CMD_GET_COALESCE as u8,
+    SetCoalesce = nl80211_commands::NL80211_CMD_SET_COALESCE as u8,
+    ChannelSwitch = nl80211_commands::NL80211_CMD_CHANNEL_SWITCH as u8,
+    Vendor = nl80211_commands::NL80211_CMD_VENDOR as u8,
+    SetQosMap = nl80211_commands::NL80211_CMD_SET_QOS_MAP as u8,
+    AddTxTs = nl80211_commands::NL80211_CMD_ADD_TX_TS as u8,
+    DelTxTs = nl80211_commands::NL80211_CMD_DEL_TX_TS as u8,
+    GetMpp = nl80211_commands::NL80211_CMD_GET_MPP as u8,
+    JoinOcb = nl80211_commands::NL80211_CMD_JOIN_OCB as u8,
+    LeaveOcb = nl80211_commands::NL80211_CMD_LEAVE_OCB as u8,
+    ChSwitchStartedNotify = nl80211_commands::NL80211_CMD_CH_SWITCH_STARTED_NOTIFY as u8,
+    TdlsChannelSwitch = nl80211_commands::NL80211_CMD_TDLS_CHANNEL_SWITCH as u8,
+    TdlsCancelChannelSwitch = nl80211_commands::NL80211_CMD_TDLS_CANCEL_CHANNEL_SWITCH as u8,
+    WiphyRegChange = nl80211_commands::NL80211_CMD_WIPHY_REG_CHANGE as u8,
+    AbortScan = nl80211_commands::NL80211_CMD_ABORT_SCAN as u8,
+    StartNan = nl80211_commands::NL80211_CMD_START_NAN as u8,
+    StopNan = nl80211_commands::NL80211_CMD_STOP_NAN as u8,
+    AddNanFunction = nl80211_commands::NL80211_CMD_ADD_NAN_FUNCTION as u8,
+    DelNanFunction = nl80211_commands::NL80211_CMD_DEL_NAN_FUNCTION as u8,
+    ChangeNanConfig = nl80211_commands::NL80211_CMD_CHANGE_NAN_CONFIG as u8,
+    NanMatch = nl80211_commands::NL80211_CMD_NAN_MATCH as u8,
+    SetMulticastToUnicast = nl80211_commands::NL80211_CMD_SET_MULTICAST_TO_UNICAST as u8,
+    UpdateConnectParams = nl80211_commands::NL80211_CMD_UPDATE_CONNECT_PARAMS as u8,
+    SetPmk = nl80211_commands::NL80211_CMD_SET_PMK as u8,
+    DelPmk = nl80211_commands::NL80211_CMD_DEL_PMK as u8,
+    PortAuthorized = nl80211_commands::NL80211_CMD_PORT_AUTHORIZED as u8,
+    ReloadRegdb = nl80211_commands::NL80211_CMD_RELOAD_REGDB as u8,
+    ExternalAuth = nl80211_commands::NL80211_CMD_EXTERNAL_AUTH as u8,
+    StaOpmodeChanged = nl80211_commands::NL80211_CMD_STA_OPMODE_CHANGED as u8,
+    ControlPortFrame = nl80211_commands::NL80211_CMD_CONTROL_PORT_FRAME as u8,
+    GetFtmResponderStats = nl80211_commands::NL80211_CMD_GET_FTM_RESPONDER_STATS as u8,
+    PeerMeasurementStart = nl80211_commands::NL80211_CMD_PEER_MEASUREMENT_START as u8,
+    PeerMeasurementResult = nl80211_commands::NL80211_CMD_PEER_MEASUREMENT_RESULT as u8,
+    PeerMeasurementComplete = nl80211_commands::NL80211_CMD_PEER_MEASUREMENT_COMPLETE as u8,
+    NotifyRadar = nl80211_commands::NL80211_CMD_NOTIFY_RADAR as u8,
+    UpdateOweInfo = nl80211_commands::NL80211_CMD_UPDATE_OWE_INFO as u8,
+    ProbeMeshLink = nl80211_commands::NL80211_CMD_PROBE_MESH_LINK as u8,
+    SetTidConfig = nl80211_commands::NL80211_CMD_SET_TID_CONFIG as u8,
+    UnprotBeacon = nl80211_commands::NL80211_CMD_UNPROT_BEACON as u8,
+    ControlPortFrameTxStatus = nl80211_commands::NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS as u8,
+    SetSarSpecs = nl80211_commands::NL80211_CMD_SET_SAR_SPECS as u8,
+    ObssColorCollision = nl80211_commands::NL80211_CMD_OBSS_COLOR_COLLISION as u8,
+    ColorChangeRequest = nl80211_commands::NL80211_CMD_COLOR_CHANGE_REQUEST as u8,
+    ColorChangeStarted = nl80211_commands::NL80211_CMD_COLOR_CHANGE_STARTED as u8,
+    ColorChangeAborted = nl80211_commands::NL80211_CMD_COLOR_CHANGE_ABORTED as u8,
+    ColorChangeCompleted = nl80211_commands::NL80211_CMD_COLOR_CHANGE_COMPLETED as u8,
+    SetFilsAad = nl80211_commands::NL80211_CMD_SET_FILS_AAD as u8,
+    AssocComeback = nl80211_commands::NL80211_CMD_ASSOC_COMEBACK as u8,
+    AddLink = nl80211_commands::NL80211_CMD_ADD_LINK as u8,
+    RemoveLink = nl80211_commands::NL80211_CMD_REMOVE_LINK as u8,
+    AddLinkSta = nl80211_commands::NL80211_CMD_ADD_LINK_STA as u8,
+    ModifyLinkSta = nl80211_commands::NL80211_CMD_MODIFY_LINK_STA as u8,
+    RemoveLinkSta = nl80211_commands::NL80211_CMD_REMOVE_LINK_STA as u8,
+    SetHwTimestamp = nl80211_commands::NL80211_CMD_SET_HW_TIMESTAMP as u8,
+    LinksRemoved = nl80211_commands::NL80211_CMD_LINKS_REMOVED as u8,
+    TidToLinkMapping = nl80211_commands::NL80211_CMD_SET_TID_TO_LINK_MAPPING as u8,
+}
+impl neli::consts::genl::Cmd for Nl80211Cmd {}
+
+#[allow(missing_docs)]
+#[neli_enum(serialized_type = "u16")]
+pub enum Nl80211Attr {
+    Unspec = nl80211_attrs::NL80211_ATTR_UNSPEC as u16,
+    Wiphy = nl80211_attrs::NL80211_ATTR_WIPHY as u16,
+    WiphyName = nl80211_attrs::NL80211_ATTR_WIPHY_NAME as u16,
+    Ifindex = nl80211_attrs::NL80211_ATTR_IFINDEX as u16,
+    Ifname = nl80211_attrs::NL80211_ATTR_IFNAME as u16,
+    Iftype = nl80211_attrs::NL80211_ATTR_IFTYPE as u16,
+    Mac = nl80211_attrs::NL80211_ATTR_MAC as u16,
+    KeyData = nl80211_attrs::NL80211_ATTR_KEY_DATA as u16,
+    KeyIdx = nl80211_attrs::NL80211_ATTR_KEY_IDX as u16,
+    KeyCipher = nl80211_attrs::NL80211_ATTR_KEY_CIPHER as u16,
+    KeySeq = nl80211_attrs::NL80211_ATTR_KEY_SEQ as u16,
+    KeyDefault = nl80211_attrs::NL80211_ATTR_KEY_DEFAULT as u16,
+    BeaconInterval = nl80211_attrs::NL80211_ATTR_BEACON_INTERVAL as u16,
+    DtimPeriod = nl80211_attrs::NL80211_ATTR_DTIM_PERIOD as u16,
+    BeaconHead = nl80211_attrs::NL80211_ATTR_BEACON_HEAD as u16,
+    BeaconTail = nl80211_attrs::NL80211_ATTR_BEACON_TAIL as u16,
+    StaAid = nl80211_attrs::NL80211_ATTR_STA_AID as u16,
+    StaFlags = nl80211_attrs::NL80211_ATTR_STA_FLAGS as u16,
+    StaListenInterval = nl80211_attrs::NL80211_ATTR_STA_LISTEN_INTERVAL as u16,
+    StaSupportedRates = nl80211_attrs::NL80211_ATTR_STA_SUPPORTED_RATES as u16,
+    StaVlan = nl80211_attrs::NL80211_ATTR_STA_VLAN as u16,
+    StaInfo = nl80211_attrs::NL80211_ATTR_STA_INFO as u16,
+    WiphyBands = nl80211_attrs::NL80211_ATTR_WIPHY_BANDS as u16,
+    MntrFlags = nl80211_attrs::NL80211_ATTR_MNTR_FLAGS as u16,
+    MeshId = nl80211_attrs::NL80211_ATTR_MESH_ID as u16,
+    StaPlinkAction = nl80211_attrs::NL80211_ATTR_STA_PLINK_ACTION as u16,
+    MpathNextHop = nl80211_attrs::NL80211_ATTR_MPATH_NEXT_HOP as u16,
+    MpathInfo = nl80211_attrs::NL80211_ATTR_MPATH_INFO as u16,
+    BssCtsProt = nl80211_attrs::NL80211_ATTR_BSS_CTS_PROT as u16,
+    BssShortPreamble = nl80211_attrs::NL80211_ATTR_BSS_SHORT_PREAMBLE as u16,
+    BssShortSlotTime = nl80211_attrs::NL80211_ATTR_BSS_SHORT_SLOT_TIME as u16,
+    HtCapability = nl80211_attrs::NL80211_ATTR_HT_CAPABILITY as u16,
+    SupportedIftypes = nl80211_attrs::NL80211_ATTR_SUPPORTED_IFTYPES as u16,
+    RegAlpha1 = nl80211_attrs::NL80211_ATTR_REG_ALPHA2 as u16,
+    RegRules = nl80211_attrs::NL80211_ATTR_REG_RULES as u16,
+    MeshConfig = nl80211_attrs::NL80211_ATTR_MESH_CONFIG as u16,
+    BssBasicRates = nl80211_attrs::NL80211_ATTR_BSS_BASIC_RATES as u16,
+    WiphyTxqParams = nl80211_attrs::NL80211_ATTR_WIPHY_TXQ_PARAMS as u16,
+    WiphyFreq = nl80211_attrs::NL80211_ATTR_WIPHY_FREQ as u16,
+    WiphyChannelType = nl80211_attrs::NL80211_ATTR_WIPHY_CHANNEL_TYPE as u16,
+    KeyDefaultMgmt = nl80211_attrs::NL80211_ATTR_KEY_DEFAULT_MGMT as u16,
+    MgmtSubtype = nl80211_attrs::NL80211_ATTR_MGMT_SUBTYPE as u16,
+    Ie = nl80211_attrs::NL80211_ATTR_IE as u16,
+    MaxNumScanSsids = nl80211_attrs::NL80211_ATTR_MAX_NUM_SCAN_SSIDS as u16,
+    ScanFrequencies = nl80211_attrs::NL80211_ATTR_SCAN_FREQUENCIES as u16,
+    ScanSsids = nl80211_attrs::NL80211_ATTR_SCAN_SSIDS as u16,
+    Generation = nl80211_attrs::NL80211_ATTR_GENERATION as u16,
+    Bss = nl80211_attrs::NL80211_ATTR_BSS as u16,
+    RegInitiator = nl80211_attrs::NL80211_ATTR_REG_INITIATOR as u16,
+    RegType = nl80211_attrs::NL80211_ATTR_REG_TYPE as u16,
+    SupportedCommands = nl80211_attrs::NL80211_ATTR_SUPPORTED_COMMANDS as u16,
+    Frame = nl80211_attrs::NL80211_ATTR_FRAME as u16,
+    Ssid = nl80211_attrs::NL80211_ATTR_SSID as u16,
+    AuthType = nl80211_attrs::NL80211_ATTR_AUTH_TYPE as u16,
+    ReasonCode = nl80211_attrs::NL80211_ATTR_REASON_CODE as u16,
+    KeyType = nl80211_attrs::NL80211_ATTR_KEY_TYPE as u16,
+    MaxScanIeLen = nl80211_attrs::NL80211_ATTR_MAX_SCAN_IE_LEN as u16,
+    CipherSuites = nl80211_attrs::NL80211_ATTR_CIPHER_SUITES as u16,
+    FreqBefore = nl80211_attrs::NL80211_ATTR_FREQ_BEFORE as u16,
+    FreqAfter = nl80211_attrs::NL80211_ATTR_FREQ_AFTER as u16,
+    FreqFixed = nl80211_attrs::NL80211_ATTR_FREQ_FIXED as u16,
+    WiphyRetryShort = nl80211_attrs::NL80211_ATTR_WIPHY_RETRY_SHORT as u16,
+    WiphyRetryLong = nl80211_attrs::NL80211_ATTR_WIPHY_RETRY_LONG as u16,
+    WiphyFragThreshold = nl80211_attrs::NL80211_ATTR_WIPHY_FRAG_THRESHOLD as u16,
+    WiphyRtsThreshold = nl80211_attrs::NL80211_ATTR_WIPHY_RTS_THRESHOLD as u16,
+    TimedOut = nl80211_attrs::NL80211_ATTR_TIMED_OUT as u16,
+    UseMfp = nl80211_attrs::NL80211_ATTR_USE_MFP as u16,
+    StaFlags1 = nl80211_attrs::NL80211_ATTR_STA_FLAGS2 as u16,
+    ControlPort = nl80211_attrs::NL80211_ATTR_CONTROL_PORT as u16,
+    Testdata = nl80211_attrs::NL80211_ATTR_TESTDATA as u16,
+    Privacy = nl80211_attrs::NL80211_ATTR_PRIVACY as u16,
+    DisconnectedByAp = nl80211_attrs::NL80211_ATTR_DISCONNECTED_BY_AP as u16,
+    StatusCode = nl80211_attrs::NL80211_ATTR_STATUS_CODE as u16,
+    CipherSuitesPairwise = nl80211_attrs::NL80211_ATTR_CIPHER_SUITES_PAIRWISE as u16,
+    CipherSuiteGroup = nl80211_attrs::NL80211_ATTR_CIPHER_SUITE_GROUP as u16,
+    WpaVersions = nl80211_attrs::NL80211_ATTR_WPA_VERSIONS as u16,
+    AkmSuites = nl80211_attrs::NL80211_ATTR_AKM_SUITES as u16,
+    ReqIe = nl80211_attrs::NL80211_ATTR_REQ_IE as u16,
+    RespIe = nl80211_attrs::NL80211_ATTR_RESP_IE as u16,
+    PrevBssid = nl80211_attrs::NL80211_ATTR_PREV_BSSID as u16,
+    Key = nl80211_attrs::NL80211_ATTR_KEY as u16,
+    Keys = nl80211_attrs::NL80211_ATTR_KEYS as u16,
+    _4addr = nl80211_attrs::NL80211_ATTR_PID as u16,
+    Pid = nl80211_attrs::NL80211_ATTR_4ADDR as u16,
+    SurveyInfo = nl80211_attrs::NL80211_ATTR_SURVEY_INFO as u16,
+    Pmkid = nl80211_attrs::NL80211_ATTR_PMKID as u16,
+    MaxNumPmkids = nl80211_attrs::NL80211_ATTR_MAX_NUM_PMKIDS as u16,
+    Duration = nl80211_attrs::NL80211_ATTR_DURATION as u16,
+    Cookie = nl80211_attrs::NL80211_ATTR_COOKIE as u16,
+    WiphyCoverageClass = nl80211_attrs::NL80211_ATTR_WIPHY_COVERAGE_CLASS as u16,
+    TxRates = nl80211_attrs::NL80211_ATTR_TX_RATES as u16,
+    FrameMatch = nl80211_attrs::NL80211_ATTR_FRAME_MATCH as u16,
+    Ack = nl80211_attrs::NL80211_ATTR_ACK as u16,
+    PsState = nl80211_attrs::NL80211_ATTR_PS_STATE as u16,
+    Cqm = nl80211_attrs::NL80211_ATTR_CQM as u16,
+    LocalStateChange = nl80211_attrs::NL80211_ATTR_LOCAL_STATE_CHANGE as u16,
+    ApIsolate = nl80211_attrs::NL80211_ATTR_AP_ISOLATE as u16,
+    WiphyTxPowerSetting = nl80211_attrs::NL80211_ATTR_WIPHY_TX_POWER_SETTING as u16,
+    WiphyTxPowerLevel = nl80211_attrs::NL80211_ATTR_WIPHY_TX_POWER_LEVEL as u16,
+    TxFrameTypes = nl80211_attrs::NL80211_ATTR_TX_FRAME_TYPES as u16,
+    RxFrameTypes = nl80211_attrs::NL80211_ATTR_RX_FRAME_TYPES as u16,
+    FrameType = nl80211_attrs::NL80211_ATTR_FRAME_TYPE as u16,
+    ControlPortEthertype = nl80211_attrs::NL80211_ATTR_CONTROL_PORT_ETHERTYPE as u16,
+    ControlPortNoEncrypt = nl80211_attrs::NL80211_ATTR_CONTROL_PORT_NO_ENCRYPT as u16,
+    SupportIbssRsn = nl80211_attrs::NL80211_ATTR_SUPPORT_IBSS_RSN as u16,
+    WiphyAntennaTx = nl80211_attrs::NL80211_ATTR_WIPHY_ANTENNA_TX as u16,
+    WiphyAntennaRx = nl80211_attrs::NL80211_ATTR_WIPHY_ANTENNA_RX as u16,
+    McastRate = nl80211_attrs::NL80211_ATTR_MCAST_RATE as u16,
+    OffchannelTxOk = nl80211_attrs::NL80211_ATTR_OFFCHANNEL_TX_OK as u16,
+    BssHtOpmode = nl80211_attrs::NL80211_ATTR_BSS_HT_OPMODE as u16,
+    KeyDefaultTypes = nl80211_attrs::NL80211_ATTR_KEY_DEFAULT_TYPES as u16,
+    MaxRemainOnChannelDuration = nl80211_attrs::NL80211_ATTR_MAX_REMAIN_ON_CHANNEL_DURATION as u16,
+    MeshSetup = nl80211_attrs::NL80211_ATTR_MESH_SETUP as u16,
+    WiphyAntennaAvailTx = nl80211_attrs::NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX as u16,
+    WiphyAntennaAvailRx = nl80211_attrs::NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX as u16,
+    SupportMeshAuth = nl80211_attrs::NL80211_ATTR_SUPPORT_MESH_AUTH as u16,
+    StaPlinkState = nl80211_attrs::NL80211_ATTR_STA_PLINK_STATE as u16,
+    WowlanTriggers = nl80211_attrs::NL80211_ATTR_WOWLAN_TRIGGERS as u16,
+    WowlanTriggersSupported = nl80211_attrs::NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED as u16,
+    SchedScanInterval = nl80211_attrs::NL80211_ATTR_SCHED_SCAN_INTERVAL as u16,
+    InterfaceCombinations = nl80211_attrs::NL80211_ATTR_INTERFACE_COMBINATIONS as u16,
+    SoftwareIftypes = nl80211_attrs::NL80211_ATTR_SOFTWARE_IFTYPES as u16,
+    RekeyData = nl80211_attrs::NL80211_ATTR_REKEY_DATA as u16,
+    MaxNumSchedScanSsids = nl80211_attrs::NL80211_ATTR_MAX_NUM_SCHED_SCAN_SSIDS as u16,
+    MaxSchedScanIeLen = nl80211_attrs::NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN as u16,
+    ScanSuppRates = nl80211_attrs::NL80211_ATTR_SCAN_SUPP_RATES as u16,
+    HiddenSsid = nl80211_attrs::NL80211_ATTR_HIDDEN_SSID as u16,
+    IeProbeResp = nl80211_attrs::NL80211_ATTR_IE_PROBE_RESP as u16,
+    IeAssocResp = nl80211_attrs::NL80211_ATTR_IE_ASSOC_RESP as u16,
+    StaWme = nl80211_attrs::NL80211_ATTR_STA_WME as u16,
+    SupportApUapsd = nl80211_attrs::NL80211_ATTR_SUPPORT_AP_UAPSD as u16,
+    RoamSupport = nl80211_attrs::NL80211_ATTR_ROAM_SUPPORT as u16,
+    SchedScanMatch = nl80211_attrs::NL80211_ATTR_SCHED_SCAN_MATCH as u16,
+    MaxMatchSets = nl80211_attrs::NL80211_ATTR_MAX_MATCH_SETS as u16,
+    PmksaCandidate = nl80211_attrs::NL80211_ATTR_PMKSA_CANDIDATE as u16,
+    TxNoCckRate = nl80211_attrs::NL80211_ATTR_TX_NO_CCK_RATE as u16,
+    TdlsAction = nl80211_attrs::NL80211_ATTR_TDLS_ACTION as u16,
+    TdlsDialogToken = nl80211_attrs::NL80211_ATTR_TDLS_DIALOG_TOKEN as u16,
+    TdlsOperation = nl80211_attrs::NL80211_ATTR_TDLS_OPERATION as u16,
+    TdlsSupport = nl80211_attrs::NL80211_ATTR_TDLS_SUPPORT as u16,
+    TdlsExternalSetup = nl80211_attrs::NL80211_ATTR_TDLS_EXTERNAL_SETUP as u16,
+    DeviceApSme = nl80211_attrs::NL80211_ATTR_DEVICE_AP_SME as u16,
+    DontWaitForAck = nl80211_attrs::NL80211_ATTR_DONT_WAIT_FOR_ACK as u16,
+    FeatureFlags = nl80211_attrs::NL80211_ATTR_FEATURE_FLAGS as u16,
+    ProbeRespOffload = nl80211_attrs::NL80211_ATTR_PROBE_RESP_OFFLOAD as u16,
+    ProbeResp = nl80211_attrs::NL80211_ATTR_PROBE_RESP as u16,
+    DfsRegion = nl80211_attrs::NL80211_ATTR_DFS_REGION as u16,
+    DisableHt = nl80211_attrs::NL80211_ATTR_DISABLE_HT as u16,
+    HtCapabilityMask = nl80211_attrs::NL80211_ATTR_HT_CAPABILITY_MASK as u16,
+    NoackMap = nl80211_attrs::NL80211_ATTR_NOACK_MAP as u16,
+    InactivityTimeout = nl80211_attrs::NL80211_ATTR_INACTIVITY_TIMEOUT as u16,
+    RxSignalDbm = nl80211_attrs::NL80211_ATTR_RX_SIGNAL_DBM as u16,
+    BgScanPeriod = nl80211_attrs::NL80211_ATTR_BG_SCAN_PERIOD as u16,
+    Wdev = nl80211_attrs::NL80211_ATTR_WDEV as u16,
+    UserRegHintType = nl80211_attrs::NL80211_ATTR_USER_REG_HINT_TYPE as u16,
+    ConnFailedReason = nl80211_attrs::NL80211_ATTR_CONN_FAILED_REASON as u16,
+    SaeData = nl80211_attrs::NL80211_ATTR_AUTH_DATA as u16,
+    VhtCapability = nl80211_attrs::NL80211_ATTR_VHT_CAPABILITY as u16,
+    ScanFlags = nl80211_attrs::NL80211_ATTR_SCAN_FLAGS as u16,
+    ChannelWidth = nl80211_attrs::NL80211_ATTR_CHANNEL_WIDTH as u16,
+    CenterFreq1 = nl80211_attrs::NL80211_ATTR_CENTER_FREQ1 as u16,
+    CenterFreq2 = nl80211_attrs::NL80211_ATTR_CENTER_FREQ2 as u16,
+    P1pCtwindow = nl80211_attrs::NL80211_ATTR_P2P_CTWINDOW as u16,
+    P1pOppps = nl80211_attrs::NL80211_ATTR_P2P_OPPPS as u16,
+    LocalMeshPowerMode = nl80211_attrs::NL80211_ATTR_LOCAL_MESH_POWER_MODE as u16,
+    AclPolicy = nl80211_attrs::NL80211_ATTR_ACL_POLICY as u16,
+    MacAddrs = nl80211_attrs::NL80211_ATTR_MAC_ADDRS as u16,
+    MacAclMax = nl80211_attrs::NL80211_ATTR_MAC_ACL_MAX as u16,
+    RadarEvent = nl80211_attrs::NL80211_ATTR_RADAR_EVENT as u16,
+    ExtCapa = nl80211_attrs::NL80211_ATTR_EXT_CAPA as u16,
+    ExtCapaMask = nl80211_attrs::NL80211_ATTR_EXT_CAPA_MASK as u16,
+    StaCapability = nl80211_attrs::NL80211_ATTR_STA_CAPABILITY as u16,
+    StaExtCapability = nl80211_attrs::NL80211_ATTR_STA_EXT_CAPABILITY as u16,
+    ProtocolFeatures = nl80211_attrs::NL80211_ATTR_PROTOCOL_FEATURES as u16,
+    SplitWiphyDump = nl80211_attrs::NL80211_ATTR_SPLIT_WIPHY_DUMP as u16,
+    DisableVht = nl80211_attrs::NL80211_ATTR_DISABLE_VHT as u16,
+    VhtCapabilityMask = nl80211_attrs::NL80211_ATTR_VHT_CAPABILITY_MASK as u16,
+    Mdid = nl80211_attrs::NL80211_ATTR_MDID as u16,
+    IeRic = nl80211_attrs::NL80211_ATTR_IE_RIC as u16,
+    CritProtId = nl80211_attrs::NL80211_ATTR_CRIT_PROT_ID as u16,
+    MaxCritProtDuration = nl80211_attrs::NL80211_ATTR_MAX_CRIT_PROT_DURATION as u16,
+    PeerAid = nl80211_attrs::NL80211_ATTR_PEER_AID as u16,
+    CoalesceRule = nl80211_attrs::NL80211_ATTR_COALESCE_RULE as u16,
+    ChSwitchCount = nl80211_attrs::NL80211_ATTR_CH_SWITCH_COUNT as u16,
+    ChSwitchBlockTx = nl80211_attrs::NL80211_ATTR_CH_SWITCH_BLOCK_TX as u16,
+    CsaIes = nl80211_attrs::NL80211_ATTR_CSA_IES as u16,
+    CsaCOffBeacon = nl80211_attrs::NL80211_ATTR_CNTDWN_OFFS_BEACON as u16,
+    CsaCOffPresp = nl80211_attrs::NL80211_ATTR_CNTDWN_OFFS_PRESP as u16,
+    RxmgmtFlags = nl80211_attrs::NL80211_ATTR_RXMGMT_FLAGS as u16,
+    StaSupportedChannels = nl80211_attrs::NL80211_ATTR_STA_SUPPORTED_CHANNELS as u16,
+    StaSupportedOperClasses = nl80211_attrs::NL80211_ATTR_STA_SUPPORTED_OPER_CLASSES as u16,
+    HandleDfs = nl80211_attrs::NL80211_ATTR_HANDLE_DFS as u16,
+    Support4Mhz = nl80211_attrs::NL80211_ATTR_SUPPORT_5_MHZ as u16,
+    Support9Mhz = nl80211_attrs::NL80211_ATTR_SUPPORT_10_MHZ as u16,
+    OpmodeNotif = nl80211_attrs::NL80211_ATTR_OPMODE_NOTIF as u16,
+    VendorId = nl80211_attrs::NL80211_ATTR_VENDOR_ID as u16,
+    VendorSubcmd = nl80211_attrs::NL80211_ATTR_VENDOR_SUBCMD as u16,
+    VendorData = nl80211_attrs::NL80211_ATTR_VENDOR_DATA as u16,
+    VendorEvents = nl80211_attrs::NL80211_ATTR_VENDOR_EVENTS as u16,
+    QosMap = nl80211_attrs::NL80211_ATTR_QOS_MAP as u16,
+    MacHint = nl80211_attrs::NL80211_ATTR_MAC_HINT as u16,
+    WiphyFreqHint = nl80211_attrs::NL80211_ATTR_WIPHY_FREQ_HINT as u16,
+    MaxApAssocSta = nl80211_attrs::NL80211_ATTR_MAX_AP_ASSOC_STA as u16,
+    TdlsPeerCapability = nl80211_attrs::NL80211_ATTR_TDLS_PEER_CAPABILITY as u16,
+    SocketOwner = nl80211_attrs::NL80211_ATTR_SOCKET_OWNER as u16,
+    CsaCOffsetsTx = nl80211_attrs::NL80211_ATTR_CSA_C_OFFSETS_TX as u16,
+    MaxCsaCounters = nl80211_attrs::NL80211_ATTR_MAX_CSA_COUNTERS as u16,
+    TdlsInitiator = nl80211_attrs::NL80211_ATTR_TDLS_INITIATOR as u16,
+    UseRrm = nl80211_attrs::NL80211_ATTR_USE_RRM as u16,
+    WiphyDynAck = nl80211_attrs::NL80211_ATTR_WIPHY_DYN_ACK as u16,
+    Tsid = nl80211_attrs::NL80211_ATTR_TSID as u16,
+    UserPrio = nl80211_attrs::NL80211_ATTR_USER_PRIO as u16,
+    AdmittedTime = nl80211_attrs::NL80211_ATTR_ADMITTED_TIME as u16,
+    SmpsMode = nl80211_attrs::NL80211_ATTR_SMPS_MODE as u16,
+    OperClass = nl80211_attrs::NL80211_ATTR_OPER_CLASS as u16,
+    MacMask = nl80211_attrs::NL80211_ATTR_MAC_MASK as u16,
+    WiphySelfManagedReg = nl80211_attrs::NL80211_ATTR_WIPHY_SELF_MANAGED_REG as u16,
+    ExtFeatures = nl80211_attrs::NL80211_ATTR_EXT_FEATURES as u16,
+    SurveyRadioStats = nl80211_attrs::NL80211_ATTR_SURVEY_RADIO_STATS as u16,
+    NetnsFd = nl80211_attrs::NL80211_ATTR_NETNS_FD as u16,
+    SchedScanDelay = nl80211_attrs::NL80211_ATTR_SCHED_SCAN_DELAY as u16,
+    RegIndoor = nl80211_attrs::NL80211_ATTR_REG_INDOOR as u16,
+    MaxNumSchedScanPlans = nl80211_attrs::NL80211_ATTR_MAX_NUM_SCHED_SCAN_PLANS as u16,
+    MaxScanPlanInterval = nl80211_attrs::NL80211_ATTR_MAX_SCAN_PLAN_INTERVAL as u16,
+    MaxScanPlanIterations = nl80211_attrs::NL80211_ATTR_MAX_SCAN_PLAN_ITERATIONS as u16,
+    SchedScanPlans = nl80211_attrs::NL80211_ATTR_SCHED_SCAN_PLANS as u16,
+    Pbss = nl80211_attrs::NL80211_ATTR_PBSS as u16,
+    BssSelect = nl80211_attrs::NL80211_ATTR_BSS_SELECT as u16,
+    StaSupportP1pPs = nl80211_attrs::NL80211_ATTR_STA_SUPPORT_P2P_PS as u16,
+    Pad = nl80211_attrs::NL80211_ATTR_PAD as u16,
+    IftypeExtCapa = nl80211_attrs::NL80211_ATTR_IFTYPE_EXT_CAPA as u16,
+    MuMimoGroupData = nl80211_attrs::NL80211_ATTR_MU_MIMO_GROUP_DATA as u16,
+    MuMimoFollowMacAddr = nl80211_attrs::NL80211_ATTR_MU_MIMO_FOLLOW_MAC_ADDR as u16,
+    ScanStartTimeTsf = nl80211_attrs::NL80211_ATTR_SCAN_START_TIME_TSF as u16,
+    ScanStartTimeTsfBssid = nl80211_attrs::NL80211_ATTR_SCAN_START_TIME_TSF_BSSID as u16,
+    MeasurementDuration = nl80211_attrs::NL80211_ATTR_MEASUREMENT_DURATION as u16,
+    MeasurementDurationMandatory =
+        nl80211_attrs::NL80211_ATTR_MEASUREMENT_DURATION_MANDATORY as u16,
+    MeshPeerAid = nl80211_attrs::NL80211_ATTR_MESH_PEER_AID as u16,
+    NanMasterPref = nl80211_attrs::NL80211_ATTR_NAN_MASTER_PREF as u16,
+    NanDual = nl80211_attrs::NL80211_ATTR_BANDS as u16,
+    NanFunc = nl80211_attrs::NL80211_ATTR_NAN_FUNC as u16,
+    NanMatch = nl80211_attrs::NL80211_ATTR_NAN_MATCH as u16,
+    FilsKek = nl80211_attrs::NL80211_ATTR_FILS_KEK as u16,
+    FilsNonces = nl80211_attrs::NL80211_ATTR_FILS_NONCES as u16,
+    MulticastToUnicastEnabled = nl80211_attrs::NL80211_ATTR_MULTICAST_TO_UNICAST_ENABLED as u16,
+    Bssid = nl80211_attrs::NL80211_ATTR_BSSID as u16,
+    SchedScanRelativeRssi = nl80211_attrs::NL80211_ATTR_SCHED_SCAN_RELATIVE_RSSI as u16,
+    SchedScanRssiAdjust = nl80211_attrs::NL80211_ATTR_SCHED_SCAN_RSSI_ADJUST as u16,
+    TimeoutReason = nl80211_attrs::NL80211_ATTR_TIMEOUT_REASON as u16,
+    FilsErpUsername = nl80211_attrs::NL80211_ATTR_FILS_ERP_USERNAME as u16,
+    FilsErpRealm = nl80211_attrs::NL80211_ATTR_FILS_ERP_REALM as u16,
+    FilsErpNextSeqnum = nl80211_attrs::NL80211_ATTR_FILS_ERP_NEXT_SEQ_NUM as u16,
+    FilsErpRrk = nl80211_attrs::NL80211_ATTR_FILS_ERP_RRK as u16,
+    FilsCacheId = nl80211_attrs::NL80211_ATTR_FILS_CACHE_ID as u16,
+    Pmk = nl80211_attrs::NL80211_ATTR_PMK as u16,
+    SchedScanMulti = nl80211_attrs::NL80211_ATTR_SCHED_SCAN_MULTI as u16,
+    SchedScanMaxReqs = nl80211_attrs::NL80211_ATTR_SCHED_SCAN_MAX_REQS as u16,
+    Want1x4wayhs = nl80211_attrs::NL80211_ATTR_WANT_1X_4WAY_HS as u16,
+    Pmkr0name = nl80211_attrs::NL80211_ATTR_PMKR0_NAME as u16,
+    PortAuthorized = nl80211_attrs::NL80211_ATTR_PORT_AUTHORIZED as u16,
+    ExternalAuthaction = nl80211_attrs::NL80211_ATTR_EXTERNAL_AUTH_ACTION as u16,
+    ExternalAuthSupport = nl80211_attrs::NL80211_ATTR_EXTERNAL_AUTH_SUPPORT as u16,
+    Nss = nl80211_attrs::NL80211_ATTR_NSS as u16,
+    Acksignal = nl80211_attrs::NL80211_ATTR_ACK_SIGNAL as u16,
+    ControlPortOverNl80211 = nl80211_attrs::NL80211_ATTR_CONTROL_PORT_OVER_NL80211 as u16,
+    TxqStats = nl80211_attrs::NL80211_ATTR_TXQ_STATS as u16,
+    TxqLimit = nl80211_attrs::NL80211_ATTR_TXQ_LIMIT as u16,
+    TxqMemoryLimit = nl80211_attrs::NL80211_ATTR_TXQ_MEMORY_LIMIT as u16,
+    TxqQuantum = nl80211_attrs::NL80211_ATTR_TXQ_QUANTUM as u16,
+    HeCapability = nl80211_attrs::NL80211_ATTR_HE_CAPABILITY as u16,
+    FtmResponder = nl80211_attrs::NL80211_ATTR_FTM_RESPONDER as u16,
+    FtmResponderStats = nl80211_attrs::NL80211_ATTR_FTM_RESPONDER_STATS as u16,
+    Timeout = nl80211_attrs::NL80211_ATTR_TIMEOUT as u16,
+    PeerMeasurements = nl80211_attrs::NL80211_ATTR_PEER_MEASUREMENTS as u16,
+    AirtimeWeight = nl80211_attrs::NL80211_ATTR_AIRTIME_WEIGHT as u16,
+    StatxPowerSetting = nl80211_attrs::NL80211_ATTR_STA_TX_POWER_SETTING as u16,
+    StatxPower = nl80211_attrs::NL80211_ATTR_STA_TX_POWER as u16,
+    SaePassword = nl80211_attrs::NL80211_ATTR_SAE_PASSWORD as u16,
+    TWTResponder = nl80211_attrs::NL80211_ATTR_TWT_RESPONDER as u16,
+    HEObssPd = nl80211_attrs::NL80211_ATTR_HE_OBSS_PD as u16,
+    WiphyEdmgChannels = nl80211_attrs::NL80211_ATTR_WIPHY_EDMG_CHANNELS as u16,
+    WiphyEdmgBwConfig = nl80211_attrs::NL80211_ATTR_WIPHY_EDMG_BW_CONFIG as u16,
+    VlanId = nl80211_attrs::NL80211_ATTR_VLAN_ID as u16,
+    HEBssColor = nl80211_attrs::NL80211_ATTR_HE_BSS_COLOR as u16,
+    IftyPeakmSuites = nl80211_attrs::NL80211_ATTR_IFTYPE_AKM_SUITES as u16,
+    TidConfig = nl80211_attrs::NL80211_ATTR_TID_CONFIG as u16,
+    ControlPortnoPreauth = nl80211_attrs::NL80211_ATTR_CONTROL_PORT_NO_PREAUTH as u16,
+    PmkLifetime = nl80211_attrs::NL80211_ATTR_PMK_LIFETIME as u16,
+    PmkReauthThreshold = nl80211_attrs::NL80211_ATTR_PMK_REAUTH_THRESHOLD as u16,
+    ReceiveMulticast = nl80211_attrs::NL80211_ATTR_RECEIVE_MULTICAST as u16,
+    WiphyFreqOffset = nl80211_attrs::NL80211_ATTR_WIPHY_FREQ_OFFSET as u16,
+    CenterFreq0Offset = nl80211_attrs::NL80211_ATTR_CENTER_FREQ1_OFFSET as u16,
+    ScanFreqKHz = nl80211_attrs::NL80211_ATTR_SCAN_FREQ_KHZ as u16,
+    HE5ghzCapability = nl80211_attrs::NL80211_ATTR_HE_6GHZ_CAPABILITY as u16,
+    FilsDiscovery = nl80211_attrs::NL80211_ATTR_FILS_DISCOVERY as u16,
+    UnsolBcastProbeResp = nl80211_attrs::NL80211_ATTR_UNSOL_BCAST_PROBE_RESP as u16,
+    S0gCapability = nl80211_attrs::NL80211_ATTR_S1G_CAPABILITY as u16,
+    S0gCapabilityMask = nl80211_attrs::NL80211_ATTR_S1G_CAPABILITY_MASK as u16,
+    SaePwe = nl80211_attrs::NL80211_ATTR_SAE_PWE as u16,
+    ReconnectRequested = nl80211_attrs::NL80211_ATTR_RECONNECT_REQUESTED as u16,
+    SarSpec = nl80211_attrs::NL80211_ATTR_SAR_SPEC as u16,
+    DisableHE = nl80211_attrs::NL80211_ATTR_DISABLE_HE as u16,
+    ObssColorBitmap = nl80211_attrs::NL80211_ATTR_OBSS_COLOR_BITMAP as u16,
+    ColorChangeCount = nl80211_attrs::NL80211_ATTR_COLOR_CHANGE_COUNT as u16,
+    ColorChangeColor = nl80211_attrs::NL80211_ATTR_COLOR_CHANGE_COLOR as u16,
+    ColorChangeElems = nl80211_attrs::NL80211_ATTR_COLOR_CHANGE_ELEMS as u16,
+    MbssidConfig = nl80211_attrs::NL80211_ATTR_MBSSID_CONFIG as u16,
+    MbssidElems = nl80211_attrs::NL80211_ATTR_MBSSID_ELEMS as u16,
+    RadarBackground = nl80211_attrs::NL80211_ATTR_RADAR_BACKGROUND as u16,
+    ApSettingsFlags = nl80211_attrs::NL80211_ATTR_AP_SETTINGS_FLAGS as u16,
+    EhtCapability = nl80211_attrs::NL80211_ATTR_EHT_CAPABILITY as u16,
+    DisableEht = nl80211_attrs::NL80211_ATTR_DISABLE_EHT as u16,
+    MloLinks = nl80211_attrs::NL80211_ATTR_MLO_LINKS as u16,
+    MloLinkId = nl80211_attrs::NL80211_ATTR_MLO_LINK_ID as u16,
+    MldAddr = nl80211_attrs::NL80211_ATTR_MLD_ADDR as u16,
+    MloSupport = nl80211_attrs::NL80211_ATTR_MLO_SUPPORT as u16,
+    MaxNumAkmSuites = nl80211_attrs::NL80211_ATTR_MAX_NUM_AKM_SUITES as u16,
+    EmlCapability = nl80211_attrs::NL80211_ATTR_EML_CAPABILITY as u16,
+    MldCapaAndOps = nl80211_attrs::NL80211_ATTR_MLD_CAPA_AND_OPS as u16,
+    TxHwTimestamp = nl80211_attrs::NL80211_ATTR_TX_HW_TIMESTAMP as u16,
+    RxHwTimestamp = nl80211_attrs::NL80211_ATTR_RX_HW_TIMESTAMP as u16,
+    TdBitmap = nl80211_attrs::NL80211_ATTR_TD_BITMAP as u16,
+    PunctBitmap = nl80211_attrs::NL80211_ATTR_PUNCT_BITMAP as u16,
+    MaxHwTimestampPeers = nl80211_attrs::NL80211_ATTR_MAX_HW_TIMESTAMP_PEERS as u16,
+    HwTimestampEnabled = nl80211_attrs::NL80211_ATTR_HW_TIMESTAMP_ENABLED as u16,
+    EmaRnrElems = nl80211_attrs::NL80211_ATTR_EMA_RNR_ELEMS as u16,
+    MloLinkDisabled = nl80211_attrs::NL80211_ATTR_MLO_LINK_DISABLED as u16,
+    BssDumpIncludeUseData = nl80211_attrs::NL80211_ATTR_BSS_DUMP_INCLUDE_USE_DATA as u16,
+    MloTtlmDlink = nl80211_attrs::NL80211_ATTR_MLO_TTLM_DLINK as u16,
+    MloTtlmUlink = nl80211_attrs::NL80211_ATTR_MLO_TTLM_ULINK as u16,
+    AssocSppAmsdu = nl80211_attrs::NL80211_ATTR_ASSOC_SPP_AMSDU as u16,
+    WiphyRadios = nl80211_attrs::NL80211_ATTR_WIPHY_RADIOS as u16,
+    WiphyInterfaceCombinations = nl80211_attrs::NL80211_ATTR_WIPHY_INTERFACE_COMBINATIONS as u16,
+    VifRadioMask = nl80211_attrs::NL80211_ATTR_VIF_RADIO_MASK as u16,
+    SupportedSelectors = nl80211_attrs::NL80211_ATTR_SUPPORTED_SELECTORS as u16,
+    MloReconfRemLinks = nl80211_attrs::NL80211_ATTR_MLO_RECONF_REM_LINKS as u16,
+    Epcs = nl80211_attrs::NL80211_ATTR_EPCS as u16,
+    MldExtCapaOps = nl80211_attrs::NL80211_ATTR_ASSOC_MLD_EXT_CAPA_OPS as u16,
+    //WiphyRadioIndex = nl80211_attrs::NL80211_ATTR_WIPHY_RADIO_INDEX as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211Attr {}
+
+#[neli_enum(serialized_type = "u32")]
+pub enum Nl80211IfType {
+    /// Unspecified type, driver decides
+    Unspecified = nl80211_iftype::NL80211_IFTYPE_UNSPECIFIED as u32,
+    /// Independent BSS member
+    Adhoc = nl80211_iftype::NL80211_IFTYPE_ADHOC as u32,
+    /// Managed BSS member
+    Station = nl80211_iftype::NL80211_IFTYPE_STATION as u32,
+    /// Access point
+    Ap = nl80211_iftype::NL80211_IFTYPE_AP as u32,
+    /// VLAN interface for access points; VLAN interfaces
+    /// are a bit special in that they must always be tied to a pre-existing
+    /// AP type interface.
+    ApVlan = nl80211_iftype::NL80211_IFTYPE_AP_VLAN as u32,
+    /// Wireless distribution interface
+    Wds = nl80211_iftype::NL80211_IFTYPE_WDS as u32,
+    /// Monitor interface receiving all frames
+    Monitor = nl80211_iftype::NL80211_IFTYPE_MONITOR as u32,
+    /// Mesh point
+    MeshPoint = nl80211_iftype::NL80211_IFTYPE_MESH_POINT as u32,
+    /// P2P client
+    P2pClient = nl80211_iftype::NL80211_IFTYPE_P2P_CLIENT as u32,
+    /// P2P group owner
+    P2pGo = nl80211_iftype::NL80211_IFTYPE_P2P_GO as u32,
+    /// P2P device interface type, this is not a netdev
+    /// and therefore can't be created in normal ways, use the
+    /// StartP2pDevice and StopP2pDevice
+    /// command to create and destroy one
+    P2pDevice = nl80211_iftype::NL80211_IFTYPE_P2P_DEVICE as u32,
+    /// Outside Context of a BSS
+    /// This mode corresponds to the MIB variable dot11OCBActivated=true
+    Ocb = nl80211_iftype::NL80211_IFTYPE_OCB as u32,
+    /// NAN device interface type (not a netdev)
+    Nan = nl80211_iftype::NL80211_IFTYPE_NAN as u32,
+}
+
+#[neli_enum(serialized_type = "u32")]
+pub enum Nl80211ChannelWidth {
+    /// 20_NOHT: 20 MHz, non-HT channel
+    Width20NoHT = nl80211_chan_width::NL80211_CHAN_WIDTH_20_NOHT as u32,
+    /// 20 MHz HT channel
+    Width20 = nl80211_chan_width::NL80211_CHAN_WIDTH_20 as u32,
+    /// 40 MHz channel, the Nl80211Attr::CenterFreq1 attribute must be provided as well
+    Width40 = nl80211_chan_width::NL80211_CHAN_WIDTH_40 as u32,
+    /// 80 MHz channel, the Nl80211Attr::CenterFreq1 attribute must be provided as well
+    Width80 = nl80211_chan_width::NL80211_CHAN_WIDTH_80 as u32,
+    /// 80+80 MHz channel, the Nl80211Attr::CenterFreq1 and Nl80211Attr::CenterFreq2 attributes must be provided as well
+    Width80P80 = nl80211_chan_width::NL80211_CHAN_WIDTH_80P80 as u32,
+    /// 160 MHz channel, the Nl80211Attr::CenterFreq1 attribute must be provided as well
+    Width160 = nl80211_chan_width::NL80211_CHAN_WIDTH_160 as u32,
+    /// 5 MHz OFDM channel
+    Width5 = nl80211_chan_width::NL80211_CHAN_WIDTH_5 as u32,
+    /// 10 MHz OFDM channel
+    Width10 = nl80211_chan_width::NL80211_CHAN_WIDTH_10 as u32,
+    /// 1 MHz OFDM channel
+    Width1 = nl80211_chan_width::NL80211_CHAN_WIDTH_1 as u32,
+    /// 2 MHz OFDM channel
+    Width2 = nl80211_chan_width::NL80211_CHAN_WIDTH_2 as u32,
+    /// 4 MHz OFDM channel
+    Width4 = nl80211_chan_width::NL80211_CHAN_WIDTH_4 as u32,
+    /// 8 MHz OFDM channel
+    Width8 = nl80211_chan_width::NL80211_CHAN_WIDTH_8 as u32,
+    /// 16 MHz OFDM channel
+    Width16 = nl80211_chan_width::NL80211_CHAN_WIDTH_16 as u32,
+    /// 320 MHz channel, the Nl80211Attr::CenterFreq1 attribute must be provided as well
+    Width320 = nl80211_chan_width::NL80211_CHAN_WIDTH_320 as u32,
+}
+
+#[neli_enum(serialized_type = "u16")]
+pub enum Nl80211Bss {
+    /// BSSID of the BSS (6 octets)
+    Bssid = nl80211_bss::NL80211_BSS_BSSID as u16,
+    /// Frequency in MHz (u32)
+    Frequency = nl80211_bss::NL80211_BSS_FREQUENCY as u16,
+    /// TSF of the received probe response/beacon (u64) (if @nl80211_bss::NL80211_BSS_PRESP_DATA is present then
+    /// this is known to be from a probe response, otherwise it may be from the same beacon that the
+    /// [`Nl80211Bss::BeaconTsf`] will be from)
+    Tsf = nl80211_bss::NL80211_BSS_TSF as u16,
+    /// Beacon interval of the (I)BSS (u16)
+    BeaconInterval = nl80211_bss::NL80211_BSS_BEACON_INTERVAL as u16,
+    /// Capability field (CPU order, u16)
+    Capability = nl80211_bss::NL80211_BSS_CAPABILITY as u16,
+    /// Binary attribute containing the raw information elements from the probe response/beacon (bin);
+    ///	if the [`Nl80211Bss::BeaconIes`] attribute is present and the data is different then the IEs here
+    /// are from a Probe Response frame; otherwise they are from a Beacon frame. However, if the driver
+    /// does not indicate the source of the IEs, these IEs may be from either frame subtype. If present,
+    /// the [`Nl80211Bss::PrespData`] attribute indicates that the data here is known to be from a probe
+    /// response, without any heuristics.
+    InformationElements = nl80211_bss::NL80211_BSS_INFORMATION_ELEMENTS as u16,
+    /// Signal strength of probe response/beacon in mBm (100 * dBm) (s32)
+    SignalMbm = nl80211_bss::NL80211_BSS_SIGNAL_MBM as u16,
+    /// Signal strength of the probe response/beacon in unspecified units, scaled to 0..100 (u8)
+    SignalUnspec = nl80211_bss::NL80211_BSS_SIGNAL_UNSPEC as u16,
+    /// Status, if this BSS is "used"
+    Status = nl80211_bss::NL80211_BSS_STATUS as u16,
+    /// Age of this BSS entry in ms
+    SeenMsAgo = nl80211_bss::NL80211_BSS_SEEN_MS_AGO as u16,
+    /// Binary attribute containing the raw information elements from a Beacon frame (bin);
+    /// not present if no Beacon frame has yet been received
+    BeaconIes = nl80211_bss::NL80211_BSS_BEACON_IES as u16,
+    /// Channel width of the control channel (u32, enum nl80211_bss_scan_width) - No longer used!
+    ChanWidth = nl80211_bss::NL80211_BSS_CHAN_WIDTH as u16,
+    /// TSF of the last received beacon (u64) (not present if no beacon frame has been received yet)
+    BeaconTsf = nl80211_bss::NL80211_BSS_BEACON_TSF as u16,
+    /// The data in [`Nl80211Bss::InformationElements`] and [`Nl80211Bss::Tsf`] is known to be from a
+    /// probe response (flag attribute)
+    PrespData = nl80211_bss::NL80211_BSS_PRESP_DATA as u16,
+    /// [`CLOCK_BOOTTIME`]` timestamp when this entry was last updated by a received frame. The value is
+    /// expected to be accurate to about 10ms. (u64, nanoseconds)
+    LastSeenSinceBootTime = nl80211_bss::NL80211_BSS_LAST_SEEN_BOOTTIME as u16,
+    /// Attribute used for padding for 64-bit alignment
+    Pad = nl80211_bss::NL80211_BSS_PAD as u16,
+    /// The time at the start of reception of the first octet of the timestamp field of the last
+    /// beacon/probe received for this BSS. The time is the TSF of the BSS specified by
+    ///	[`Nl80211Bss::ParentBssid`]. (u64).
+    ParentTsf = nl80211_bss::NL80211_BSS_PARENT_TSF as u16,
+    /// The BSS according to which [`Nl80211Bss::ParentTsf`] is set.
+    ParentBssid = nl80211_bss::NL80211_BSS_PARENT_BSSID as u16,
+    /// Per-chain signal strength of last BSS update. Contains a nested array of signal strength
+    /// attributes (u8, dBm), using the nesting index as the antenna number.
+    ChainSignal = nl80211_bss::NL80211_BSS_CHAIN_SIGNAL as u16,
+    /// Frequency offset in KHz
+    FrequencyOffset = nl80211_bss::NL80211_BSS_FREQUENCY_OFFSET as u16,
+    /// MLO link ID of the BSS (u8).
+    MloLinkId = nl80211_bss::NL80211_BSS_MLO_LINK_ID as u16,
+    /// MLD address of this BSS if connected to it.
+    MldAddr = nl80211_bss::NL80211_BSS_MLD_ADDR as u16,
+    /// u32 bitmap attribute indicating what the BSS can be used for, see [`&enum nl80211_bss_use_for`].
+    // TODO: Add nl80211_bss_use_for
+    UseFor = nl80211_bss::NL80211_BSS_USE_FOR as u16,
+    /// Indicates the reason that this BSS cannot be used for all or some of the possible uses by the
+    /// device reporting it, even though its presence was detected. This is a u64 attribute containing
+    /// a bitmap of values from [`&enum nl80211_cannot_use_reasons`], note that the attribute may be missing
+    ///	if no reasons are specified.
+    // TODO: Add nl80211_bss_use_for
+    CannotUseReasons = nl80211_bss::NL80211_BSS_CANNOT_USE_REASONS as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211Bss {}
+
+#[neli_enum(serialized_type = "u32")]
+pub enum Nl80211AuthType {
+    /// Open System authentication
+    OpenSystem = nl80211_auth_type::NL80211_AUTHTYPE_OPEN_SYSTEM as u32,
+    /// Shared Key authentication (WEP only)
+    SharedKey = nl80211_auth_type::NL80211_AUTHTYPE_SHARED_KEY as u32,
+    /// Fast BSS Transition (IEEE 802.11r)
+    FT = nl80211_auth_type::NL80211_AUTHTYPE_FT as u32,
+    /// Network EAP (some Cisco APs and mainly LEAP)
+    NetworkEap = nl80211_auth_type::NL80211_AUTHTYPE_NETWORK_EAP as u32,
+    /// Simultaneous authentication of equals
+    Sae = nl80211_auth_type::NL80211_AUTHTYPE_SAE as u32,
+    /// Fast Initial Link Setup shared key
+    FilsSk = nl80211_auth_type::NL80211_AUTHTYPE_FILS_SK as u32,
+    /// Fast Initial Link Setup shared key with PFS
+    FilsSkPfs = nl80211_auth_type::NL80211_AUTHTYPE_FILS_SK_PFS as u32,
+    /// Fast Initial Link Setup public key
+    FilsPk = nl80211_auth_type::NL80211_AUTHTYPE_FILS_PK as u32,
+}
+
+impl_flags!(
+    #[allow(missing_docs)]
+    pub ScanFlag: u32 {
+        /// Scan request has low priority. Driver must indicate support in [`Nl80211Attr::FeatureFlags`]
+        LowPriority = nl80211_scan_flags::NL80211_SCAN_FLAG_LOW_PRIORITY as u32,
+        /// Flush cache before scanning
+        Flush = nl80211_scan_flags::NL80211_SCAN_FLAG_FLUSH as u32,
+        /// Force a scan even if the interface is configured as AP and the beaconing has already been configured.
+        /// This attribute is dangerous because will destroy stations performance as a lot of frames
+        /// will be lost while scanning off-channel, therefore it must be used only when really needed
+        Ap = nl80211_scan_flags::NL80211_SCAN_FLAG_AP as u32,
+        /// Use a random MAC address for this scan (or for scheduled scan: a different one for every scan iteration).
+        /// When the flag is set, depending on device capabilities the [`Nl80211Attr::Mac`] and [`Nl80211Attr::MacMask`]
+        /// attributes may also be given in which case only the masked bits will be preserved from the MAC address
+        /// and the remainder randomised. If the attributes are not given full randomisation (46 bits,
+        /// locally administered 1, multicast 0) is assumed. This flag must not be requested when the feature isn't
+        /// supported, check [`Nl80211Attr::FeatureFlags`] for the device.
+        RandomAddr = nl80211_scan_flags::NL80211_SCAN_FLAG_RANDOM_ADDR as u32,
+        /// Fill the dwell time in the FILS request parameters IE in the probe request
+        FilsMaxChannelTime = nl80211_scan_flags::NL80211_SCAN_FLAG_FILS_MAX_CHANNEL_TIME as u32,
+        /// Accept broadcast probe responses
+        AcceptBcastProbeResp = nl80211_scan_flags::NL80211_SCAN_FLAG_ACCEPT_BCAST_PROBE_RESP as u32,
+        /// Send probe request frames at rate of at least 5.5M. In case non-OCE AP is discovered in the channel,
+        /// only the first probe req in the channel will be sent in high rate.
+        OceProbeReqHighTxRate = nl80211_scan_flags::NL80211_SCAN_FLAG_OCE_PROBE_REQ_HIGH_TX_RATE as u32,
+        /// Allow probe request tx deferral (dot11FILSProbeDelay shall be set to 15ms) and suppression
+        /// (if it has received a broadcast Probe Response frame, Beacon frame or FILS Discovery frame
+        /// from an AP that the STA considers a suitable candidate for (re-)association - suitable in terms of
+        /// SSID and/or RSSI.
+        OceProbeReqDeferralSuppression = nl80211_scan_flags::NL80211_SCAN_FLAG_OCE_PROBE_REQ_DEFERRAL_SUPPRESSION as u32,
+        /// Span corresponds to the total time taken to accomplish the scan. Thus, this flag intends the
+        /// driver to perform the scan request with lesser span/duration. It is specific to the driver
+        /// implementations on how this is accomplished. Scan accuracy may get impacted with this flag.
+        LowSpan = nl80211_scan_flags::NL80211_SCAN_FLAG_LOW_SPAN as u32,
+        /// This flag intends the scan attempts to consume optimal possible power. Drivers can resort to
+        /// their specific means to optimize the power. Scan accuracy may get impacted with this flag.
+        LowPower = nl80211_scan_flags::NL80211_SCAN_FLAG_LOW_POWER as u32,
+        /// Accuracy here intends to the extent of scan results obtained. Thus [`ScanFlag::HighAccuracy`] scan flag aims
+        /// to get maximum possible scan results. This flag hints the driver to use the best possible scan
+        /// configuration to improve the accuracy in scanning. Latency and power use may get impacted with
+        /// this flag.
+        HighAccuracy = nl80211_scan_flags::NL80211_SCAN_FLAG_HIGH_ACCURACY as u32,
+        /// Randomize the sequence number in probe request frames from this scan to avoid correlation/tracking
+        /// being possible.
+        RandomSn = nl80211_scan_flags::NL80211_SCAN_FLAG_RANDOM_SN as u32,
+        /// Minimize probe request content to only have supported rates and no additional capabilities
+        /// (unless added by userspace explicitly).
+        MinPreqContent = nl80211_scan_flags::NL80211_SCAN_FLAG_MIN_PREQ_CONTENT as u32,
+        /// Report scan results with [`Nl80211Attr::ScanFreqKhz`]. This also means [`Nl80211Attr::ScanFrequencies`]
+        /// will not be included.
+        FreqKHz = nl80211_scan_flags::NL80211_SCAN_FLAG_FREQ_KHZ as u32,
+        /// Scan for collocated APs reported by 2.4/5 GHz APs. When the flag is set, the scan logic will use the
+        /// information from the RNR element found in beacons/probe responses received on the 2.4/5 GHz channels
+        /// to actively scan only the 6GHz channels on which APs are expected to be found. Note that when not set,
+        /// the scan logic would scan all 6GHz channels, but since transmission of probe requests on non-PSC channels
+        /// is limited, it is highly likely that these channels would passively be scanned. Also note that when the flag
+        /// is set, in addition to the colocated APs, PSC channels would also be scanned if the user space has asked for it.
+        Colocated6GHz = nl80211_scan_flags::NL80211_SCAN_FLAG_COLOCATED_6GHZ as u32,
+    }
+);
