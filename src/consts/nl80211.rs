@@ -2465,43 +2465,44 @@ impl neli::consts::genl::NlAttrType for Nl80211Attr {}
 //       presently there is not an ergonomic way to support
 //       serializing attributes as any size other than u16
 /// Virtual interface types (`enum nl80211_iftype`)
-#[neli::neli_enum(serialized_type = "u32")]
+#[neli::neli_enum(serialized_type = "u16")]
 pub enum Nl80211Iftype {
     /// Unspecified type, driver decides
-    Unspecified = nl80211_iftype::NL80211_IFTYPE_UNSPECIFIED as u32,
+    Unspecified = nl80211_iftype::NL80211_IFTYPE_UNSPECIFIED as u16,
     /// Independent BSS member
-    Adhoc = nl80211_iftype::NL80211_IFTYPE_ADHOC as u32,
+    Adhoc = nl80211_iftype::NL80211_IFTYPE_ADHOC as u16,
     /// Managed BSS member
-    Station = nl80211_iftype::NL80211_IFTYPE_STATION as u32,
+    Station = nl80211_iftype::NL80211_IFTYPE_STATION as u16,
     /// Access point
-    Ap = nl80211_iftype::NL80211_IFTYPE_AP as u32,
+    Ap = nl80211_iftype::NL80211_IFTYPE_AP as u16,
     /// VLAN interface for access points
     ///
     /// VLAN interfaces are a bit special in that they must always be tied to a pre-existing
     /// AP type interface.
-    ApVlan = nl80211_iftype::NL80211_IFTYPE_AP_VLAN as u32,
+    ApVlan = nl80211_iftype::NL80211_IFTYPE_AP_VLAN as u16,
     /// Wireless distribution interface
-    Wds = nl80211_iftype::NL80211_IFTYPE_WDS as u32,
+    Wds = nl80211_iftype::NL80211_IFTYPE_WDS as u16,
     /// Monitor interface receiving all frames
-    Monitor = nl80211_iftype::NL80211_IFTYPE_MONITOR as u32,
+    Monitor = nl80211_iftype::NL80211_IFTYPE_MONITOR as u16,
     /// Mesh point
-    MeshPoint = nl80211_iftype::NL80211_IFTYPE_MESH_POINT as u32,
+    MeshPoint = nl80211_iftype::NL80211_IFTYPE_MESH_POINT as u16,
     /// P2P client
-    P2pClient = nl80211_iftype::NL80211_IFTYPE_P2P_CLIENT as u32,
+    P2pClient = nl80211_iftype::NL80211_IFTYPE_P2P_CLIENT as u16,
     /// P2P group owner (GO)
-    P2pGo = nl80211_iftype::NL80211_IFTYPE_P2P_GO as u32,
+    P2pGo = nl80211_iftype::NL80211_IFTYPE_P2P_GO as u16,
     /// P2P device interface type
     ///
     /// This is not a netdev and therefore can't be created in normal ways, use the [`Nl80211Command::StartP2pDevice`]
     /// and [`Nl80211Command::StopP2pDevice`] commands to create and destroy one
-    P2pDevice = nl80211_iftype::NL80211_IFTYPE_P2P_DEVICE as u32,
+    P2pDevice = nl80211_iftype::NL80211_IFTYPE_P2P_DEVICE as u16,
     /// Outside Context of a BSS
     ///
     /// This mode corresponds to the MIB variable dot11OCBActivated=true
-    Ocb = nl80211_iftype::NL80211_IFTYPE_OCB as u32,
+    Ocb = nl80211_iftype::NL80211_IFTYPE_OCB as u16,
     /// NAN device interface type (not a netdev)
-    Nan = nl80211_iftype::NL80211_IFTYPE_NAN as u32,
+    Nan = nl80211_iftype::NL80211_IFTYPE_NAN as u16,
 }
+impl neli::consts::genl::NlAttrType for Nl80211Iftype {}
 
 /// Band attributes (`enum nl80211_band_attr`)
 ///
