@@ -1,8 +1,7 @@
-use linux_raw_sys::netlink::{
-    nl80211_attrs, nl80211_band_attr, nl80211_bitrate_attr, nl80211_chan_width,
-    nl80211_channel_type, nl80211_commands, nl80211_frequency_attr, nl80211_iftype,
-};
+use linux_raw_sys::netlink::*;
 
+#[cfg(doc)]
+use crate::consts::rtnl::Iff;
 #[cfg(doc)]
 use linux_raw_sys::netlink::{
     NL80211_MAX_NR_AKM_SUITES, NL80211_MAX_SUPP_RATES, NL80211_MAX_SUPP_SELECTORS,
@@ -111,7 +110,6 @@ pub enum Nl80211Command {
     StartAp = nl80211_commands::NL80211_CMD_START_AP as u8,
     /// Old alias for [`Nl80211Command::StartAp`]
     // TODO: Deprecate?
-    //#[deprecated]
     NewBeacon = nl80211_commands::NL80211_CMD_NEW_BEACON as u8,
     /// Stop AP operation on the given interface
     StopAp = nl80211_commands::NL80211_CMD_STOP_AP as u8,
@@ -148,12 +146,11 @@ pub enum Nl80211Command {
     ///
     /// CRDA sends this command after being queried by the kernel. CRDA replies by sending a regulatory
     /// domain structure which consists of [`Nl80211Attr::RegAlpha2`] set to our current alpha2 if it found a match.
-    /// It also provides `NL80211_ATTR_REG_RULE_FLAGS`, and a set of regulatory rules.
+    /// It also provides [`Nl80211RegRuleAttr::Flags`], and a set of regulatory rules.
     ///
-    /// Each regulatory rule is a nested set of attributes given by `NL80211_ATTR_REG_RULE_FREQ_[START|END]`
-    /// and `NL80211_ATTR_FREQ_RANGE_MAX_BW` with an attached power rule given by `NL80211_ATTR_REG_RULE_POWER_MAX_ANT_GAIN`
-    /// and `NL80211_ATTR_REG_RULE_POWER_MAX_EIRP`.
-    // TODO: enum nl80211_reg_rule_attr
+    /// Each regulatory rule is a nested set of attributes given by [`Nl80211RegRuleAttr::FreqRangeStart`]/[`Nl80211RegRuleAttr::FreqRangeEnd`]
+    /// and [`Nl80211RegRuleAttr::FreqRangeMaxBw`] with an attached power rule given by [`Nl80211RegRuleAttr::PowerRuleMaxAntGain`]
+    /// and [`Nl80211RegRuleAttr::PowerRuleMaxEirp`].
     SetReg = nl80211_commands::NL80211_CMD_SET_REG as u8,
     /// Ask the wireless core to set the regulatory domain to the specified ISO/IEC 3166-1 alpha2 country code.
     ///
@@ -396,10 +393,9 @@ pub enum Nl80211Command {
     /// The registration cannot be dropped, but is removed automatically when the netlink socket is closed. Multiple registrations
     /// can be made.
     ///
-    /// The [`Nl80211Attr::ReceiveMulticast`] flag attribute can be given if `NL80211_EXT_FEATURE_MULTICAST_REGISTRATIONS`
+    /// The [`Nl80211Attr::ReceiveMulticast`] flag attribute can be given if [`Nl80211ExtFeatureIndex::MulticastRegistrations`]
     /// is available, in which case the registration can also be modified to include/exclude the flag, rather than requiring
     /// unregistration to change it.
-    // TODO: enum nl80211_ext_features_index
     RegisterFrame = nl80211_commands::NL80211_CMD_REGISTER_FRAME as u8,
     /// Alias for [`Nl80211Command::RegisterFrame`] for backward compatibility.
     RegisterAction = nl80211_commands::NL80211_CMD_REGISTER_ACTION as u8,
@@ -566,8 +562,7 @@ pub enum Nl80211Command {
     /// tear down an existing one).
     ///
     /// In such events, [`Nl80211Attr::TdlsOperation`] indicates the requested operation, [`Nl80211Attr::Mac`] contains the
-    /// peer MAC address, and [`Nl80211Attr::ReasonCode`] the reason code to be used (only with `NL80211_TDLS_TEARDOWN`).
-    // TODO: enum nl80211_tdls_operation
+    /// peer MAC address, and [`Nl80211Attr::ReasonCode`] the reason code to be used (only with [`Nl80211TdlsOperation::Teardown`]).
     TdlsOper = nl80211_commands::NL80211_CMD_TDLS_OPER as u8,
     /// Send a TDLS management frame.
     ///
@@ -772,8 +767,7 @@ pub enum Nl80211Command {
     /// Delete a NAN function by cookie.
     ///
     /// This command is also used as a notification sent when a NAN function is terminated. This will contain a
-    /// `NL80211_ATTR_NAN_FUNC_INSTANCE_ID` and [`Nl80211Attr::Cookie`] attributes.
-    // TODO: enum nl80211_nan_func_attributes
+    /// [`Nl80211NanFuncAttributes::InstanceId`] and [`Nl80211Attr::Cookie`] attributes.
     DelNanFunction = nl80211_commands::NL80211_CMD_DEL_NAN_FUNCTION as u8,
     /// Change current NAN configuration.
     ///
@@ -1000,6 +994,87 @@ pub enum Nl80211Command {
     ///
     /// Used by user space to control EPCS configuration. Used to notify user space on the current state of EPCS.
     EpcsCfg = nl80211_commands::NL80211_CMD_EPCS_CFG as u8,
+    /// This command is used to notify user space about the next NAN Discovery Window (DW). User space may use it
+    /// to prepare frames to be sent in the next DW.
+    ///
+    /// [`Nl80211Attr::WiphyFreq`] is used to indicate the frequency of the next DW. SDF transmission should
+    /// be requested with [`Nl80211Command::Frame`] and the device/driver shall take care of the actual transmission
+    /// timing.
+    ///
+    /// This notification is only sent to the NAN interface owning socket (see [`Nl80211Attr::SocketOwner`] flag).
+    NanNextDwNotification = nl80211_commands::NL80211_CMD_NAN_NEXT_DW_NOTIFICATION as u8,
+    /// This command is used to notify user space that the NAN new cluster has been joined.
+    /// The cluster ID is indicated by [`Nl80211Attr::Mac`].
+    NanClusterJoined = nl80211_commands::NL80211_CMD_NAN_CLUSTER_JOINED as u8,
+    /// Once any incumbent signal is detected on the operating channel in 6 GHz band, userspace is notified with the
+    /// signal interference bitmap using [`Nl80211Attr::IncumbentSignalInterferenceBitmap`].
+    ///
+    /// The current channel definition is also sent.
+    IncumbentSignalDetect = nl80211_commands::NL80211_CMD_INCUMBENT_SIGNAL_DETECT as u8,
+    /// Set the local NAN schedule.
+    ///
+    /// NAN must be operational ([`Nl80211Command::StartNan`] was executed).
+    ///
+    /// Must contain [`Nl80211Attr::NanTimeSlots`] and [`Nl80211Attr::NanAvailBlob`], but [`Nl80211Attr::NanChannel`]
+    /// is optional (for example in case of a channel removal, that channel won't be provided).
+    ///
+    /// If [`Nl80211Attr::NanSchedDeferred`] is set, the command is a request from the device to perform an announced
+    /// schedule update. See [`Nl80211Attr::NanSchedDeferred`] for more details. If not set, the schedule should be
+    /// applied immediately.
+    NanSetLocalSched = nl80211_commands::NL80211_CMD_NAN_SET_LOCAL_SCHED as u8,
+    /// Event sent to user space to notify that a deferred local NAN schedule update (requested with
+    /// [`Nl80211Command::NanSetLocalSched`] and [`Nl80211Attr::NanSchedDeferred`]) has been completed.
+    ///
+    /// The presence of [`Nl80211Attr::NanSchedUpdateSuccess`] indicates that the update was successful.
+    NanSchedUpdateDone = nl80211_commands::NL80211_CMD_NAN_SCHED_UPDATE_DONE as u8,
+    /// Set the peer NAN schedule.
+    ///
+    /// NAN must be operational ([`Nl80211Command::StartNan`] was executed).
+    ///
+    /// Required attributes:
+    /// - %NL80211_ATTR_MAC (peer NMI address)
+    /// - %NL80211_ATTR_NAN_COMMITTED_DW
+    ///
+    /// Optionally, the full schedule can be provided by including all of:
+    /// - %NL80211_ATTR_NAN_SEQ_ID
+    /// - %NL80211_ATTR_NAN_CHANNEL (one or more)
+    /// - %NL80211_ATTR_NAN_PEER_MAPS (see `enum nl80211_nan_peer_map_attrs`)
+    /// If any of these three optional attributes is provided, all three must be provided.
+    ///
+    /// Each peer channel must be compatible with at least one local channel set by [`Nl80211Command::NanSetLocalSched`].
+    /// Different maps must not contain compatible channels.
+    ///
+    /// For single-radio devices (n_radio <= 1), different maps must not schedule the same time slot, as the device
+    /// cannot operate on multiple channels simultaneously.
+    ///
+    /// When updating an existing peer schedule, the full new schedule must be provided - partial updates are not supported.
+    /// The new schedule will completely replace the previous one.
+    ///
+    /// The peer schedule is automatically removed when the NMI station is removed.
+    // TODO: enum nl80211_nan_peer_map_attrs
+    NanSetPeerSched = nl80211_commands::NL80211_CMD_NAN_SET_PEER_SCHED as u8,
+    /// Notification from the driver to user space with the updated ULW blob of the device.
+    ///
+    /// User space can use this blob to attach to frames sent to peers.
+    ///
+    /// This notification contains [`Nl80211Attr::NanUlw`] with the ULW blob.
+    NanUlwUpdate = nl80211_commands::NL80211_CMD_NAN_ULW_UPDATE as u8,
+    /// Notification to indicate that a NAN channel has been evacuated due to resource conflicts with other interfaces.
+    ///
+    /// This can happen when another interface sharing the channel resource with NAN needs to move to a different channel
+    /// (e.g., channel switch or link switch on a BSS interface).
+    ///
+    /// The notification contains [`Nl80211Attr::NanChannel`] attribute identifying the evacuated channel.
+    ///
+    /// User space may reconfigure the local schedule in response to this notification.
+    NanChannelEvac = nl80211_commands::NL80211_CMD_NAN_CHANNEL_EVAC as u8,
+    // v7.2+
+    /// Start PD operation, identified by its [`Nl80211Attr::Wdev`] interface.
+    ///
+    /// This interface must have been previously created with [`Nl80211Command::NewInterface`].
+    StartPd = nl80211_commands::NL80211_CMD_START_PD as u8,
+    /// Stop the PD operation, identified by its [`Nl80211Attr::Wdev`] interface.
+    StopPd = nl80211_commands::NL80211_CMD_STOP_PD as u8,
 }
 impl neli::consts::genl::Cmd for Nl80211Command {}
 
@@ -1047,10 +1122,9 @@ pub enum Nl80211Attr {
     BeaconTail = nl80211_attrs::NL80211_ATTR_BEACON_TAIL as u16,
     /// Association ID for the station (`u16`).
     StaAid = nl80211_attrs::NL80211_ATTR_STA_AID as u16,
-    /// Flags, nested element with NLA_FLAG attributes of `enum nl80211_sta_flags`.
+    /// Flags, nested element with NLA_FLAG attributes of [`Nl80211StaFlags`].
     ///
     /// Deprecated, use [`Nl80211Attr::StaFlags2`].
-    // TODO: enum nl80211_sta_flags
     // TODO: Deprecate?
     StaFlags = nl80211_attrs::NL80211_ATTR_STA_FLAGS as u16,
     /// Listen interval as defined by IEEE 802.11 7.3.1.6 (`u16`).
@@ -1066,13 +1140,11 @@ pub enum Nl80211Attr {
     ///
     /// Part of station info given for [`Nl80211Command::GetStation`], nested attribute containing info as possible.
     ///
-    /// See `enum nl80211_sta_info`.
-    // TODO: enum nl80211_sta_info
+    /// See [`Nl80211StaInfo`].
     StaInfo = nl80211_attrs::NL80211_ATTR_STA_INFO as u16,
     /// Information about an operating bands, consisting of a nested array.
     WiphyBands = nl80211_attrs::NL80211_ATTR_WIPHY_BANDS as u16,
-    /// Flags. Nested element with NLA_FLAG attributes of `enum nl80211_mntr_flags`
-    // TODO: enum nl80211_mntr_flags
+    /// Flags. Nested element with NLA_FLAG attributes of [`Nl80211MntrFlags`].
     MntrFlags = nl80211_attrs::NL80211_ATTR_MNTR_FLAGS as u16,
     /// Mesh ID (1-32 bytes).
     MeshId = nl80211_attrs::NL80211_ATTR_MESH_ID as u16,
@@ -1159,13 +1231,11 @@ pub enum Nl80211Attr {
     Bss = nl80211_attrs::NL80211_ATTR_BSS as u16,
     /// Indicates who requested the regulatory domain currently in effect.
     ///
-    /// This could be any of the `NL80211_REGDOM_SET_BY*`
-    // TODO: enum nl80211_reg_initiator
+    /// This could be any of [`Nl80211RegInitiator`].
     RegInitiator = nl80211_attrs::NL80211_ATTR_REG_INITIATOR as u16,
     /// Indicates the type of the regulatory domain currently set.
     ///
-    /// This can be one of the `enum nl80211_reg_type` (`NL80211_REGDOM_TYPE_*`)
-    // TODO: enum nl80211_reg_type
+    /// This can be one of the [`Nl80211RegType`].
     RegType = nl80211_attrs::NL80211_ATTR_REG_TYPE as u16,
     /// Wiphy attribute that specifies an array of command numbers (i.e. a mapping index to command number)
     /// that the driver for the given wiphy supports.
@@ -1176,13 +1246,11 @@ pub enum Nl80211Attr {
     Frame = nl80211_attrs::NL80211_ATTR_FRAME as u16,
     /// SSID (binary attribute, 0..32 octets)
     Ssid = nl80211_attrs::NL80211_ATTR_SSID as u16,
-    /// AuthenticationType, see `enum nl80211_auth_type`. Represented as a `u32`.
-    // TODO: enum nl80211_auth_type
+    /// AuthenticationType, see [`Nl80211AuthType`]. Represented as a `u32`.
     AuthType = nl80211_attrs::NL80211_ATTR_AUTH_TYPE as u16,
     /// Reason code for [`Nl80211Command::Deauthenticate`] and [`Nl80211Command::Disassociate`] (`u16`).
     ReasonCode = nl80211_attrs::NL80211_ATTR_REASON_CODE as u16,
-    /// Key Type, see `enum nl80211_key_type`. Represented as a `u32`.
-    // TODO: enum nl80211_key_type
+    /// Key Type, see [`Nl80211KeyType`]. Represented as a `u32`.
     KeyType = nl80211_attrs::NL80211_ATTR_KEY_TYPE as u16,
     /// Maximum length of information elements that can be added to a scan request.
     MaxScanIeLen = nl80211_attrs::NL80211_ATTR_MAX_SCAN_IE_LEN as u16,
@@ -1222,26 +1290,23 @@ pub enum Nl80211Attr {
     ///
     /// This is used, e.g., with [`Nl80211Command::Authenticate`] event.
     TimedOut = nl80211_attrs::NL80211_ATTR_TIMED_OUT as u16,
-    /// Whether management frame protection (IEEE 802.11w, MFP) is used for the association (`enum nl80211_mfp`,
-    /// represented as a `u32`).
+    /// Whether management frame protection (IEEE 802.11w, MFP) is used for the association ([`Nl80211Mfp`], represented as a `u32`).
     ///
     /// This attribute can be used with [`Nl80211Command::Associate`] and [`Nl80211Command::Connect`] requests.
     ///
-    /// `NL80211_MFP_OPTIONAL` is not allowed for [`Nl80211Command::Associate`] since user space SME is expected
+    /// [`Nl80211Mfp::Optional`] is not allowed for [`Nl80211Command::Associate`] since user space SME is expected
     /// and hence, it must have decided whether to use management frame protection or not.
     ///
-    /// Setting `NL80211_MFP_OPTIONAL` with a [`Nl80211Command::Connect`] request will let the driver
+    /// Setting [`Nl80211Mfp::Optional`] with a [`Nl80211Command::Connect`] request will let the driver
     /// (or the firmware) decide whether to use MFP or not.
-    // TODO: enum nl80211_mfp
     UseMfp = nl80211_attrs::NL80211_ATTR_USE_MFP as u16,
     /// Attribute containing a `struct nl80211_sta_flag_update`.
     StaFlags2 = nl80211_attrs::NL80211_ATTR_STA_FLAGS2 as u16,
-    /// A flag indicating whether user space controls IEEE 802.1X port, i.e., sets/clears `NL80211_STA_FLAG_AUTHORIZED`,
+    /// A flag indicating whether user space controls IEEE 802.1X port, i.e., sets/clears [`Nl80211StaFlags::Authorized`],
     /// in station mode.
     ///
     /// If the flag is included in [`Nl80211Command::Associate`] request, the driver will assume that the port is
     /// unauthorized until authorized by user space. Otherwise, port is marked authorized by default in station mode.
-    // TODO: enum nl80211_sta_flags
     ControlPort = nl80211_attrs::NL80211_ATTR_CONTROL_PORT as u16,
     /// Testmode data blob, passed through to the driver.
     ///
@@ -1263,8 +1328,7 @@ pub enum Nl80211Attr {
     /// Used with [`Nl80211Command::Connect`], [`Nl80211Command::Associate`], and [`Nl80211Command::NewBeacon`]
     /// to indicate which WPA version(s) the AP we want to associate with is using.
     ///
-    /// The value is a `u32` with flags from `enum nl80211_wpa_versions`.
-    // TODO: enum nl80211_wpa_versions
+    /// The value is a `u32` with flags from [`Nl80211WpaVersions`].
     WpaVersions = nl80211_attrs::NL80211_ATTR_WPA_VERSIONS as u16,
     /// Used with [`Nl80211Command::Connect`], [`Nl80211Command::Associate`], and [`Nl80211Command::NewBeacon`]
     /// to indicate which key management algorithm(s) to use (an array of `u32`).
@@ -1286,13 +1350,11 @@ pub enum Nl80211Attr {
     /// Rephrased, use Reassociate Request frame (with the value of this attribute in the current AP address field)
     /// instead of Association Request frame which is used for the initial association to an ESS.
     PrevBssid = nl80211_attrs::NL80211_ATTR_PREV_BSSID as u16,
-    /// Key information in a nested attribute with `NL80211_KEY_*` sub-attributes.
-    // TODO: enum nl80211_key_mode
+    /// Key information in a nested attribute with [`Nl80211KeyMode`] sub-attributes.
     Key = nl80211_attrs::NL80211_ATTR_KEY as u16,
-    /// Array of keys for static WEP keys for `connect()` and `join_ibss()`.
+    /// Array of keys for static WEP keys for [`Nl80211Command::Connect`] and [`Nl80211Command::JoinIbss`].
     ///
-    /// Key information is in a nested attribute each with `NL80211_KEY_*` sub-attributes.
-    // TODO: enum nl80211_key_mode
+    /// Key information is in a nested attribute each with [`Nl80211KeyMode`] sub-attributes.
     Keys = nl80211_attrs::NL80211_ATTR_KEYS as u16,
     /// Process ID of a network namespace.
     Pid = nl80211_attrs::NL80211_ATTR_PID as u16,
@@ -1302,8 +1364,7 @@ pub enum Nl80211Attr {
     ///
     /// Nested attribute containing info as possible.
     ///
-    /// See `enum nl80211_survey_info`.
-    // TODO: enum nl80211_survey_info
+    /// See [`Nl80211SurveyInfo`].
     SurveyInfo = nl80211_attrs::NL80211_ATTR_SURVEY_INFO as u16,
     /// PMK material for PMKSA caching.
     Pmkid = nl80211_attrs::NL80211_ATTR_PMKID as u16,
@@ -1319,7 +1380,7 @@ pub enum Nl80211Attr {
     WiphyCoverageClass = nl80211_attrs::NL80211_ATTR_WIPHY_COVERAGE_CLASS as u16,
     /// Nested set of attributes (`enum nl80211_tx_rate_attributes`) describing TX rates per band.
     ///
-    /// The `enum nl80211_band` value is used as the index (`nla_type()` of the nested data).
+    /// The [`Nl80211Band`] value is used as the index (`nla_type()` of the nested data).
     /// If a band is not included, it will be configured to allow all rates based on negotiated supported
     /// rates information.
     ///
@@ -1332,7 +1393,6 @@ pub enum Nl80211Attr {
     /// `NL80211_EXT_FEATURE_BEACON_RATE_VHT`, `NL80211_EXT_FEATURE_BEACON_RATE_HE` and
     /// `NL80211_EXT_FEATURE_BEACON_RATE_EHT`.
     // TODO: enum nl80211_tx_rate_attributes
-    // TODO: enum nl80211_band
     // TODO: enum nl80211_ext_feature_index
     TxRates = nl80211_attrs::NL80211_ATTR_TX_RATES as u16,
     /// A binary attribute which typically must contain at least one byte.
@@ -1543,8 +1603,7 @@ pub enum Nl80211Attr {
     TdlsAction = nl80211_attrs::NL80211_ATTR_TDLS_ACTION as u16,
     /// Non-zero token for uniquely identifying a TDLS conversation between two devices.
     TdlsDialogToken = nl80211_attrs::NL80211_ATTR_TDLS_DIALOG_TOKEN as u16,
-    /// High level TDLS operation; see `enum nl80211_tdls_operation`, represented as a `u8`.
-    // TODO: enum nl80211_tdls_operation
+    /// High level TDLS operation; see [`Nl80211TdlsOperation`], represented as a `u8`.
     TdlsOperation = nl80211_attrs::NL80211_ATTR_TDLS_OPERATION as u16,
     /// A flag indicating the device can operate as a TDLS peer STA.
     TdlsSupport = nl80211_attrs::NL80211_ATTR_TDLS_SUPPORT as u16,
@@ -1994,14 +2053,11 @@ pub enum Nl80211Attr {
     NanMasterPref = nl80211_attrs::NL80211_ATTR_NAN_MASTER_PREF as u16,
     /// Operating bands configuration.
     ///
-    /// This is a `u32` bitmask of `BIT(NL80211_BAND_*)` as described in `enum nl80211_band`. For instance,
-    /// for `NL80211_BAND_2GHZ`, bit 0 would be set.
+    /// This is a `u32` bitmask as described in [`Nl80211Band`]. For instance, for [`Nl80211Band::Band2Ghz`], bit 0 would be set.
     ///
-    /// This attribute is used with [`Nl80211Command::StartNan`] and [`Nl80211Command::ChangeNanConfig`],
-    /// and it is optional.
+    /// This attribute is used with [`Nl80211Command::StartNan`] and [`Nl80211Command::ChangeNanConfig`], and it is optional.
     ///
     /// If no bands are set, it means don't care and the device will decide what to use.
-    // TODO: enum nl80211_band
     Bands = nl80211_attrs::NL80211_ATTR_BANDS as u16,
     /// A function that can be added to NAN.
     ///
@@ -2429,12 +2485,16 @@ pub enum Nl80211Attr {
     MloReconfRemLinks = nl80211_attrs::NL80211_ATTR_MLO_RECONF_REM_LINKS as u16,
     /// Flag attribute indicating that EPCS is enabled for a station interface.
     Epcs = nl80211_attrs::NL80211_ATTR_EPCS as u16,
-    /// Extended MLD capabilities and operations that user space implements to use during
-    /// association/ML link reconfig.
+    // TODO: These changes will land in 7.2
+    /// Extended MLD capabilities and operations.
     ///
-    /// Currently only "BTM MLD Recommendation For Multiple APs Support". Drivers may set additional
-    /// flags that they support in the kernel or device.
-    MldExtCapaOps = nl80211_attrs::NL80211_ATTR_ASSOC_MLD_EXT_CAPA_OPS as u16,
+    /// For association and link reconfiguration, indicates extra capabilities that userspace implements,
+    /// currently only "BTM MLD Recommendation For Multiple APs Support".
+    ///
+    /// For wiphy information, additional flags that drivers will set, but this is informational only for userspace
+    /// (it's not expected to set these.)
+    // TODO: Changed to this from NL80211_ATTR_ASSOC_MLD_EXT_CAPA_OPS in v7.2. Add alias for this and others renamed
+    ExtMldCapaAndOps = nl80211_attrs::NL80211_ATTR_EXT_MLD_CAPA_AND_OPS as u16,
     /// Integer attribute denoting the index of the radio of interest (`u8`).
     ///
     /// Internally a value of -1 is used to indicate that the radio ID is not given in user-space.
@@ -2458,6 +2518,166 @@ pub enum Nl80211Attr {
     /// Refer to `enum nl80211_s1g_short_beacon_attrs` for the attribute definitions.
     // TODO: enum nl80211_s1g_short_beacon_attrs
     S1gShortBeacon = nl80211_attrs::NL80211_ATTR_S1G_SHORT_BEACON as u16,
+    /// Nested attribute used with [`Nl80211Command::GetWiphy`] which indicates which BSS parameters can be modified.
+    ///
+    /// The attribute can also be used as flag attribute by user-space in [`Nl80211Command::SetBss`]
+    /// to indicate that it wants strict checking on the BSS parameters to be modified.
+    BssParam = nl80211_attrs::NL80211_ATTR_BSS_PARAM as u16,
+    /// Nested attribute for extended NAN cluster configuration.
+    ///
+    /// This is used with [`Nl80211Command::StartNan`] and [`Nl80211Command::ChangeNanConfig`].
+    ///
+    /// See `enum nl80211_nan_conf_attributes` for details. This attribute is optional.
+    // TODO: Nl80211NanConfAttributes
+    NanConfig = nl80211_attrs::NL80211_ATTR_NAN_CONFIG as u16,
+    /// Flag attribute indicating that a new NAN cluster has been created.
+    ///
+    /// This is used with [`Nl80211Command::NanClusterJoined`].
+    NanNewCluster = nl80211_attrs::NL80211_ATTR_NAN_NEW_CLUSTER as u16,
+    /// Nested attribute for NAN capabilities.
+    ///
+    /// This is used with [`Nl80211Command::GetWiphy`] to indicate the NAN capabilities supported by the driver.
+    ///
+    /// See `enum nl80211_nan_capabilities` for details.
+    // TODO: Nl80211NanCapabilities
+    NanCapabilities = nl80211_attrs::NL80211_ATTR_NAN_CAPABILITIES as u16,
+    /// Flag attribute indicating that the S1G primary channel is 2 MHz wide, and the control
+    /// channel designates the 1 MHz primary subchannel within that 2 MHz primary.
+    S1gPrimary2Mhz = nl80211_attrs::NL80211_ATTR_S1G_PRIMARY_2MHZ as u16,
+    // A flag attribute to indicate if the peer is an EPP STA.
+    //
+    // Used with [`Nl80211Command::NewSta`] and [`Nl80211Command::AddLinkSta`].
+    EppPeer = nl80211_attrs::NL80211_ATTR_EPP_PEER as u16,
+    // UHR Capability information element (from association request when used with [`Nl80211Command::NewStation`]).
+    //
+    // Can be set only if HE/EHT are also available.
+    UhrCapability = nl80211_attrs::NL80211_ATTR_UHR_CAPABILITY as u16,
+    // Force UHR capable interfaces to disable this feature during association.
+    //
+    // This is a flag attribute. Currently only supported in `mac80211` drivers.
+    DisableUhr = nl80211_attrs::NL80211_ATTR_DISABLE_UHR as u16,
+    // Attribute specifying the signal interference bitmap detected on the operating bandwidth for
+    // [`Nl80211Command::IncumbentSignalDetect`].
+    //
+    // Each bit represents a 20 MHz segment, lowest bit corresponds to the lowest 20 MHz segment,
+    // in the operating bandwidth where the interference is detected.
+    //
+    // Punctured sub-channels are included in the bitmap structure; however, since interference detection is
+    // not performed on these sub-channels, their corresponding bits are consistently set to zero.
+    IncumbentSignalInterferenceBitmap =
+        nl80211_attrs::NL80211_ATTR_INCUMBENT_SIGNAL_INTERFERENCE_BITMAP as u16,
+    // Full UHR Operation element, as it appears in association response etc., since it's abridged in the beacon.
+    //
+    // Used for [`Nl80211Command::StartAp`] etc.
+    UhrOperation = nl80211_attrs::NL80211_ATTR_UHR_OPERATION as u16,
+    /// This is a nested attribute. There can be multiple attributes of this type, each one represents a channel
+    /// definition and consists of top-level attributes like [`Nl80211Attr::WiphyFreq`].
+    ///
+    /// When used with [`Nl80211Command::NanSetLocalSched`], it specifies the channel definitions on which the radio
+    /// needs to operate during specific time slots. All of the channel definitions should be mutually incompatible.
+    /// With this command, [`Nl80211Attr::NanChannelEntry`] and [`Nl80211Attr::NanRxNss`] are mandatory.
+    ///
+    /// When used with [`Nl80211Command::NanSetPeerSched`], it configures the peer NAN channels. In that case,
+    /// the channel definitions can be compatible to each other, or even identical just with different RX NSS.
+    /// With this command, [`Nl80211Attr::NanChannelEntry`] and [`Nl80211Attr::NanRxNss`] are mandatory.
+    ///
+    /// The number of channels should fit the current configuration of channels and the possible interface combinations.
+    ///
+    /// If an existing NAN channel is changed but the chandef isn't, the channel entry must also remain unchanged.
+    ///
+    /// When used with [`Nl80211Command::NanChannelEvac`], this identifies the channels that were evacuated.
+    NanChannel = nl80211_attrs::NL80211_ATTR_NAN_CHANNEL as u16,
+    /// A byte array of 6 bytes. Contains the Channel Entry as defined in Wi-Fi Aware (TM) 4.0 specification Table
+    /// 100 (Channel Entry format for the NAN Availability attribute).
+    NanChannelEntry = nl80211_attrs::NL80211_ATTR_NAN_CHANNEL_ENTRY as u16,
+    /// An array of `u8` values and 32 cells. Each value maps a time slot to the chandef on which the radio should
+    /// operate on in that time. `NL80211_NAN_SCHED_NOT_AVAIL_SLOT` indicates unscheduled.
+    ///
+    /// The chandef is represented using its index, where the index is the sequential number of the [`Nl80211Attr::NanChannel`]
+    /// attribute within all the attributes of this type.
+    ///
+    /// Each slots spans over 16TUs, hence the entire schedule spans over 512TUs. Other slot durations and periods
+    /// are currently not supported.
+    NanTimeSlots = nl80211_attrs::NL80211_ATTR_NAN_TIME_SLOTS as u16,
+    /// RX NSS used for a NAN channel (`u8`).
+    ///
+    /// This is used with [`Nl80211Attr::NanChannel`] when configuring NAN channels with [`Nl80211Command::NanSetLocalSched`]
+    /// or [`Nl80211Command::NanSetPeerSched`].
+    NanRxNss = nl80211_attrs::NL80211_ATTR_NAN_RX_NSS as u16,
+    /// (Binary) The NAN Availability attribute blob, including the attribute header, as defined in Wi-Fi Aware (TM) 4.0
+    /// specification Table 93 (NAN Availability attribute format).
+    ///
+    /// Required with [`Nl80211Command::NanSetLocalSched`] to provide the raw NAN Availability attribute.
+    ///
+    /// Used by the device to publish Schedule Update NAFs.
+    NanAvailBlob = nl80211_attrs::NL80211_ATTR_NAN_AVAIL_BLOB as u16,
+    /// Flag attribute used with [`Nl80211Command::NanSetLocalSched`].
+    ///
+    /// When present, the command is a request from the device to perform an announced schedule update. This means
+    /// that it needs to send the updated NAN availability to the peers, and do the actual switch on the right time
+    /// (i.e. at the end of the slot after the slot in which the updated NAN Availability was sent). Since the
+    /// slots management is done in the device, the update to the peers needs to be sent by the device, so it knows
+    /// the actual switch time.
+    ///
+    /// If the flag is not set, the schedule should be applied immediately.
+    ///
+    /// When this flag is set, the total number of NAN channels from both the old and new schedules must not exceed
+    /// the allowed number of local NAN channels, because with deferred scheduling the old channels cannot be removed
+    /// before adding the new ones to free up space.
+    NanSchedDeferred = nl80211_attrs::NL80211_ATTR_NAN_SCHED_DEFERRED as u16,
+    /// Flag attribute used with [`Nl80211Command::NanSchedUpdateDone`] to indicate that the deferred schedule update completed successfully.
+    ///
+    /// If this flag is not present, the update failed.
+    NanSchedUpdateSuccess = nl80211_attrs::NL80211_ATTR_NAN_SCHED_UPDATE_SUCCESS as u16,
+    /// The address of the NMI station to which this NDI station belongs.
+    ///
+    /// Used with [`Nl80211Command::NewStation`] when adding an NDI station.
+    NanNmiMac = nl80211_attrs::NL80211_ATTR_NAN_NMI_MAC as u16,
+    /// (Binary) The initial ULW(s) as published by the peer, as defined in the Wi-Fi Aware (TM) 4.0 specification Table 109
+    /// (Unaligned Schedule attribute format).
+    ///
+    /// Used to configure the device with the initial ULW(s) of a peer, before the device starts tracking it.
+    NanUlw = nl80211_attrs::NL80211_ATTR_NAN_ULW as u16,
+    /// The committed DW as published by the peer (`u16`), as defined in the Wi-Fi Aware (TM) 4.0 specification Table 80
+    /// (Committed DW Information field format).
+    NanCommittedDw = nl80211_attrs::NL80211_ATTR_NAN_COMMITTED_DW as u16,
+    /// The sequence ID of the peer schedule that [`Nl80211Command::NanSetPeerSched`] defines (`u8`).
+    ///
+    /// The device follows the sequence ID in the frames to identify newer schedules.
+    ///
+    /// Once a schedule with a higher sequence ID is received, the device may stop communicating with that peer until
+    /// a new peer schedule with a matching sequence ID is received.
+    NanSeqId = nl80211_attrs::NL80211_ATTR_NAN_SEQ_ID as u16,
+    /// The maximum channel switch time, in microseconds (`u16`).
+    NanMaxChanSwitchTime = nl80211_attrs::NL80211_ATTR_NAN_MAX_CHAN_SWITCH_TIME as u16,
+    /// Nested array of peer schedule maps. Used with [`Nl80211Command::NanSetPeerSched`].
+    ///
+    /// Contains up to 2 entries, each containing nested attributes from `enum nl80211_nan_peer_map_attrs`.
+    // TODO: enum nl80211_nan_peer_map_attrs
+    NanPeerMaps = nl80211_attrs::NL80211_ATTR_NAN_PEER_MAPS as u16,
+    // 7.2+ stuff
+    /// Flag attribute, used only with the [`Nl80211Command::Connect`] event in SME-in-driver mode.
+    ///
+    /// The driver should set this flag to indicate that both the (Re)Association Request frame
+    /// and the corresponding (Re)Association Response frame are transmitted encrypted over the air.
+    /// Enhanced Privacy Protection (EPP), as defined in IEEE P802.11bi/D4.0, mandates this encryption.
+    AssocEncrypted = nl80211_attrs::NL80211_ATTR_ASSOC_ENCRYPTED as u16,
+    /// NPCA primary channel (`u32`)
+    NpcaPrimaryFreq = nl80211_attrs::NL80211_ATTR_NPCA_PRIMARY_FREQ as u16,
+    /// NPCA puncturing bitmap (`u32`)
+    NpcaPunctBitmap = nl80211_attrs::NL80211_ATTR_NPCA_PUNCT_BITMAP as u16,
+    /// Request flag for [`Nl80211Command::GetStation`] (dump mode only).
+    ///
+    /// When set on an MLD station, the dump produces two [`Nl80211Command::NewStation`] messages per station per dump call:
+    /// 1. An aggregated-stats message whose top-level %NL80211_ATTR_STA_INFO contains MLO-combined statistics (same content as a dump withou this flag).
+    ///
+    /// 2. For each active link, a per-link message containing [`Nl80211Attr::MloLinks`] with a single link entry.
+    ///    Each entry holds [`Nl80211Attr::MloLinkId`], the link-specific [`Nl80211Attr::Mac`], [`Nl80211Attr::StaInfo`] with per-link statistics
+    ///    (see [`Nl80211StaInfo`]).
+    ///
+    /// The aggregated message always precedes the per-link messages for the same station within a dump sequence.
+    //StaDumpLinkStats = nl80211_attrs::NL80211_ATTR_STA_DUMP_LINK_STATS as u16,
+    StaDumpLinkStats = 367, // TODO: v7.3
 }
 impl neli::consts::genl::NlAttrType for Nl80211Attr {}
 
@@ -2501,8 +2721,360 @@ pub enum Nl80211Iftype {
     Ocb = nl80211_iftype::NL80211_IFTYPE_OCB as u16,
     /// NAN device interface type (not a netdev)
     Nan = nl80211_iftype::NL80211_IFTYPE_NAN as u16,
+    /// NAN data interface type (not a netdev)
+    ///
+    /// NAN data interfaces can only be brought up (`Iff::UP`) when a NAN interface already exists and
+    /// NAN has been started (`Nl80211Command::StartNan`).
+    NanData = nl80211_iftype::NL80211_IFTYPE_NAN_DATA as u16,
 }
 impl neli::consts::genl::NlAttrType for Nl80211Iftype {}
+
+impl_flags!(
+    /// Station flags (`enum nl80211_sta_flags`)
+    ///
+    /// When a station is added to an AP interface, it is assumed to be already associated (and hence authenticated).
+    pub Nl80211StaFlags: u32 {
+        /// Station is authorized (802.1X)
+        Authorized = 1 << nl80211_sta_flags::NL80211_STA_FLAG_AUTHORIZED as u32,
+        /// Station is capable of receiving frames with short Barker preamble
+        ShortPreamble = 1 << nl80211_sta_flags::NL80211_STA_FLAG_SHORT_PREAMBLE as u32,
+        /// Station is WME/QoS capable
+        Wme = 1 << nl80211_sta_flags::NL80211_STA_FLAG_WME as u32,
+        /// Station uses management frame protection (MFP)
+        Mfp = 1 << nl80211_sta_flags::NL80211_STA_FLAG_MFP as u32,
+        /// Station is authenticated
+        Authenticated = 1 << nl80211_sta_flags::NL80211_STA_FLAG_AUTHENTICATED as u32,
+        /// Station is a TDLS peer -- this flag should only be used in managed mode (even in the flags mask).
+        ///
+        /// Note that the flag can't be changed, it is only valid while adding a station, and attempts to change
+        /// it will silently be ignored (rather than rejected as errors.)
+        TdlsPeer = 1 << nl80211_sta_flags::NL80211_STA_FLAG_TDLS_PEER as u32,
+        /// Station is associated; used with drivers that support [`Nl80211Feature::FulApClientState`] to transition
+        /// a previously added station into associated state
+        Associated = 1 << nl80211_sta_flags::NL80211_STA_FLAG_ASSOCIATED as u32,
+        /// Station supports SPP A-MSDUs
+        SppAmsdu = 1 << nl80211_sta_flags::NL80211_STA_FLAG_SPP_AMSDU as u32,
+    }
+);
+
+/// HE guard interval (`enum nl80211_he_gi`)
+#[neli::neli_enum(serialized_type = "u8")]
+pub enum Nl80211HeGi {
+    /// 0.8 usec
+    Gi08 = nl80211_he_gi::NL80211_RATE_INFO_HE_GI_0_8 as u8,
+    /// 1.6 usec
+    Gi16 = nl80211_he_gi::NL80211_RATE_INFO_HE_GI_1_6 as u8,
+    /// 3.2 usec
+    Gi32 = nl80211_he_gi::NL80211_RATE_INFO_HE_GI_3_2 as u8,
+}
+
+/// HE RU allocation values (`enum nl80211_he_ru_alloc`)
+#[neli::neli_enum(serialized_type = "u8")]
+pub enum Nl80211HeRuAlloc {
+    /// 26-tone RU allocation
+    Ru26 = nl80211_he_ru_alloc::NL80211_RATE_INFO_HE_RU_ALLOC_26 as u8,
+    /// 52-tone RU allocation
+    Ru52 = nl80211_he_ru_alloc::NL80211_RATE_INFO_HE_RU_ALLOC_52 as u8,
+    /// 106-tone RU allocation
+    Ru106 = nl80211_he_ru_alloc::NL80211_RATE_INFO_HE_RU_ALLOC_106 as u8,
+    /// 242-tone RU allocation
+    Ru242 = nl80211_he_ru_alloc::NL80211_RATE_INFO_HE_RU_ALLOC_242 as u8,
+    /// 484-tone RU allocation
+    Ru484 = nl80211_he_ru_alloc::NL80211_RATE_INFO_HE_RU_ALLOC_484 as u8,
+    /// 996-tone RU allocation
+    Ru996 = nl80211_he_ru_alloc::NL80211_RATE_INFO_HE_RU_ALLOC_996 as u8,
+    /// 2x996-tone RU allocation
+    Ru2x996 = nl80211_he_ru_alloc::NL80211_RATE_INFO_HE_RU_ALLOC_2x996 as u8,
+}
+
+/// EHT guard interval (`enum nl80211_eht_gi`)
+#[neli::neli_enum(serialized_type = "u8")]
+pub enum Nl80211EhtGi {
+    /// 0.8 usec
+    Gi08 = nl80211_eht_gi::NL80211_RATE_INFO_EHT_GI_0_8 as u8,
+    /// 1.6 usec
+    Gi16 = nl80211_eht_gi::NL80211_RATE_INFO_EHT_GI_1_6 as u8,
+    /// 3.2 usec
+    Gi32 = nl80211_eht_gi::NL80211_RATE_INFO_EHT_GI_3_2 as u8,
+}
+
+/// EHT RU allocation values (`enum nl80211_eht_ru_alloc`)
+#[neli::neli_enum(serialized_type = "u8")]
+pub enum Nl80211EhtRuAlloc {
+    /// 26-tone RU allocation
+    Ru26 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_26 as u8,
+    /// 52-tone RU allocation
+    Ru52 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_52 as u8,
+    /// 52+26-tone RU allocation
+    Ru52P26 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_52P26 as u8,
+    /// 106-tone RU allocation
+    Ru106 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_106 as u8,
+    /// 106+26-tone RU allocation
+    Ru106P26 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_106P26 as u8,
+    /// 242-tone RU allocation
+    Ru242 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_242 as u8,
+    /// 484-tone RU allocation
+    Ru484 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_484 as u8,
+    /// 484+242-tone RU allocation
+    Ru484P242 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_484P242 as u8,
+    /// 996-tone RU allocation
+    Ru996 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_996 as u8,
+    /// 996+484 tone RU allocation
+    Ru996P424 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_996P484 as u8,
+    /// 996+484+242 tone RU allocation
+    Ru996P424P242 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_996P484P242 as u8,
+    /// 2x996-tone RU allocation
+    Ru2x996 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_2x996 as u8,
+    /// 2x996+484 tone RU allocation
+    Ru2x996P424 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_2x996P484 as u8,
+    /// 3x996-tone RU allocation
+    Ru3x996 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_3x996 as u8,
+    /// 3x996+484 tone RU allocation
+    Ru3x996P424 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_3x996P484 as u8,
+    /// 4x996-tone RU allocation
+    Ru4x996 = nl80211_eht_ru_alloc::NL80211_RATE_INFO_EHT_RU_ALLOC_4x996 as u8,
+}
+
+/// Bitrate information (`enum nl80211_rate_info`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211RateInfo {
+    /// Total bitrate (`u16`, 100kbit/s)
+    Bitrate = nl80211_rate_info::NL80211_RATE_INFO_BITRATE as u16,
+    /// MCS index for 802.11n (`u8`)
+    Mcs = nl80211_rate_info::NL80211_RATE_INFO_MCS as u16,
+    /// 40 MHz dualchannel bitrate
+    Width40Mhz = nl80211_rate_info::NL80211_RATE_INFO_40_MHZ_WIDTH as u16,
+    /// 400ns guard interval
+    ShortGi = nl80211_rate_info::NL80211_RATE_INFO_SHORT_GI as u16,
+    /// total bitrate (`u32`, 100kbit/s)
+    Bitrate32 = nl80211_rate_info::NL80211_RATE_INFO_BITRATE32 as u16,
+    /// MCS index for VHT (`u8`)
+    VhtMcs = nl80211_rate_info::NL80211_RATE_INFO_VHT_MCS as u16,
+    /// Number of streams in VHT (`u8`)
+    VhtNss = nl80211_rate_info::NL80211_RATE_INFO_VHT_NSS as u16,
+    /// 80 MHz VHT rate
+    Width80Mhz = nl80211_rate_info::NL80211_RATE_INFO_80_MHZ_WIDTH as u16,
+    /// Unused - 80+80 is treated the same as 160 MHz for purposes of bitrates
+    Width80P80Mhz = nl80211_rate_info::NL80211_RATE_INFO_80P80_MHZ_WIDTH as u16,
+    /// 160 MHz VHT rate
+    Width160Mhz = nl80211_rate_info::NL80211_RATE_INFO_160_MHZ_WIDTH as u16,
+    /// 10 MHz width - note that this is a legacy rate and will be reported
+    /// as the actual bitrate, i.e. half the base (20 MHz) rate
+    Width10Mhz = nl80211_rate_info::NL80211_RATE_INFO_10_MHZ_WIDTH as u16,
+    /// 5 MHz width - note that this is a legacy rate and will be reported
+    /// as the actual bitrate, i.e. a quarter of the base (20 MHz) rate
+    Width5Mhz = nl80211_rate_info::NL80211_RATE_INFO_5_MHZ_WIDTH as u16,
+    /// HE MCS index (`u8`, 0-11)
+    HeMcs = nl80211_rate_info::NL80211_RATE_INFO_HE_MCS as u16,
+    /// HE NSS value (`u8`, 1-8)
+    HeNss = nl80211_rate_info::NL80211_RATE_INFO_HE_NSS as u16,
+    /// HE guard interval identifier (`u8`, see [`Nl80211HeGi`])
+    HeGi = nl80211_rate_info::NL80211_RATE_INFO_HE_GI as u16,
+    /// HE DCM value (`u8`, 0/1)
+    HeDcm = nl80211_rate_info::NL80211_RATE_INFO_HE_DCM as u16,
+    /// HE RU allocation, if not present then non-OFDMA was used
+    /// (`u8`, see [`Nl80211HeRuAlloc`])
+    HeRuAlloc = nl80211_rate_info::NL80211_RATE_INFO_HE_RU_ALLOC as u16,
+    /// 320 MHz bitrate
+    Width320Mhz = nl80211_rate_info::NL80211_RATE_INFO_320_MHZ_WIDTH as u16,
+    /// EHT MCS index (`u8`, 0-15)
+    EhtMcs = nl80211_rate_info::NL80211_RATE_INFO_EHT_MCS as u16,
+    /// EHT NSS value (`u8`, 1-8)
+    EhtNss = nl80211_rate_info::NL80211_RATE_INFO_EHT_NSS as u16,
+    /// EHT guard interval identifier (`u8`, see [`Nl80211EhtGi`])
+    EhtGi = nl80211_rate_info::NL80211_RATE_INFO_EHT_GI as u16,
+    /// EHT RU allocation, if not present then non-OFDMA was used
+    /// (`u8`, see [`Nl80211EhtRuAlloc`])
+    EhtRuAlloc = nl80211_rate_info::NL80211_RATE_INFO_EHT_RU_ALLOC as u16,
+    /// S1G MCS index (`u8`, 0-10)
+    S1gMcs = nl80211_rate_info::NL80211_RATE_INFO_S1G_MCS as u16,
+    /// S1G NSS value (`u8`, 1-4)
+    S1gNss = nl80211_rate_info::NL80211_RATE_INFO_S1G_NSS as u16,
+    /// 1 MHz S1G rate
+    Width1Mhz = nl80211_rate_info::NL80211_RATE_INFO_1_MHZ_WIDTH as u16,
+    /// 2 MHz S1G rate
+    Width2Mhz = nl80211_rate_info::NL80211_RATE_INFO_2_MHZ_WIDTH as u16,
+    /// 4 MHz S1G rate
+    Width4Mhz = nl80211_rate_info::NL80211_RATE_INFO_4_MHZ_WIDTH as u16,
+    /// 8 MHz S1G rate
+    Width8Mhz = nl80211_rate_info::NL80211_RATE_INFO_8_MHZ_WIDTH as u16,
+    /// 16 MHz S1G rate
+    Width16Mhz = nl80211_rate_info::NL80211_RATE_INFO_16_MHZ_WIDTH as u16,
+    /// UHR MCS index (`u8`, 0-15, 17, 19, 20, 23)
+    ///
+    /// Note that the other EHT attributes (such as `Nl80211EhtGi:Gi16`) are used in conjunction with this where applicable
+    UhrMcs = nl80211_rate_info::NL80211_RATE_INFO_UHR_MCS as u16,
+    /// UHR ELR flag, which restricts NSS to 1, MCS to 0 or 1, and GI to [`Nl80211EhtGi::Gi16`].
+    UhrElr = nl80211_rate_info::NL80211_RATE_INFO_UHR_ELR as u16,
+    /// UHR Interference Mitigation flag
+    UhrIm = nl80211_rate_info::NL80211_RATE_INFO_UHR_IM as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211RateInfo {}
+
+/// BSS information collected by STA (`enum nl80211_sta_bss_param`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211StaBssParam {
+    /// Whether CTS protection is enabled (flag)
+    CtsProt = nl80211_sta_bss_param::NL80211_STA_BSS_PARAM_CTS_PROT as u16,
+    /// Whether short short preamble is enabled (flag)
+    ShortPreamble = nl80211_sta_bss_param::NL80211_STA_BSS_PARAM_SHORT_PREAMBLE as u16,
+    /// Whether short slot time is enabled (flag)
+    ShortSlotTime = nl80211_sta_bss_param::NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME as u16,
+    /// DTIM period for beaconing (`u8`)
+    DtimPeriod = nl80211_sta_bss_param::NL80211_STA_BSS_PARAM_DTIM_PERIOD as u16,
+    /// Beacon interval (`u16`)
+    BeaconInterval = nl80211_sta_bss_param::NL80211_STA_BSS_PARAM_BEACON_INTERVAL as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211StaBssParam {}
+
+/// Station information (`enum nl80211_sta_info`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211StaInfo {
+    /// Time since last activity (`u32`, msecs)
+    InactiveTime = nl80211_sta_info::NL80211_STA_INFO_INACTIVE_TIME as u16,
+    /// Total received bytes (MPDU length) (`u32`, from this station)
+    RxBytes = nl80211_sta_info::NL80211_STA_INFO_RX_BYTES as u16,
+    /// Total transmitted bytes (MPDU length) (`u32`, to this station)
+    TxBytes = nl80211_sta_info::NL80211_STA_INFO_TX_BYTES as u16,
+    /// The station's mesh LLID
+    Llid = nl80211_sta_info::NL80211_STA_INFO_LLID as u16,
+    /// The station's mesh PLID
+    Plid = nl80211_sta_info::NL80211_STA_INFO_PLID as u16,
+    /// Peer link state for the station see `enum nl80211_plink_state`
+    // TODO: Impl mesh nl80211_plink_state
+    PlinkState = nl80211_sta_info::NL80211_STA_INFO_PLINK_STATE as u16,
+    /// Signal strength of last received PPDU (i8, dBm)
+    Signal = nl80211_sta_info::NL80211_STA_INFO_SIGNAL as u16,
+    /// Current unicast tx rate, nested attribute containing info as possible,
+    /// see [`Nl80211RateInfo`]
+    TxBitrate = nl80211_sta_info::NL80211_STA_INFO_TX_BITRATE as u16,
+    /// Total received packet (MSDUs and MMPDUs) (`u32`, from this station)
+    RxPackets = nl80211_sta_info::NL80211_STA_INFO_RX_PACKETS as u16,
+    /// Total transmitted packets (MSDUs and MMPDUs) (`u32`, to this station)
+    TxPackets = nl80211_sta_info::NL80211_STA_INFO_TX_PACKETS as u16,
+    /// Total retries (MPDUs) (`u32`, to this station)
+    TxRetries = nl80211_sta_info::NL80211_STA_INFO_TX_RETRIES as u16,
+    /// Total failed packets (MPDUs) (`u32`, to this station)
+    TxFailed = nl80211_sta_info::NL80211_STA_INFO_TX_FAILED as u16,
+    /// Signal strength average (`i8`, dBm)
+    SignalAvg = nl80211_sta_info::NL80211_STA_INFO_SIGNAL_AVG as u16,
+    /// Last unicast data frame rx rate, nested ttribute, like [`Nl80211StaInfo::TxBitrate`]
+    RxBitrate = nl80211_sta_info::NL80211_STA_INFO_RX_BITRATE as u16,
+    /// Current station's view of BSS, nested attribute containing info as possible,
+    /// see [`Nl80211StaBssParam`]
+    BssParam = nl80211_sta_info::NL80211_STA_INFO_BSS_PARAM as u16,
+    /// Time since the station is last connected
+    ConnectedTime = nl80211_sta_info::NL80211_STA_INFO_CONNECTED_TIME as u16,
+    /// Contains a `struct nl80211_sta_flag`_update.
+    // TODO: struct nl80211_sta_flag_update ???
+    StaFlags = nl80211_sta_info::NL80211_STA_INFO_STA_FLAGS as u16,
+    /// Count of times beacon loss was detected (`u32`)
+    BeaconLoss = nl80211_sta_info::NL80211_STA_INFO_BEACON_LOSS as u16,
+    /// Timing offset with respect to this STA (`i64`)
+    TOffset = nl80211_sta_info::NL80211_STA_INFO_T_OFFSET as u16,
+    /// Local mesh STA link-specific power mode
+    LocalPm = nl80211_sta_info::NL80211_STA_INFO_LOCAL_PM as u16,
+    /// Peer mesh STA link-specific power mode
+    PeerPm = nl80211_sta_info::NL80211_STA_INFO_PEER_PM as u16,
+    /// Neighbor mesh STA power save mode towards on-peer STA
+    NonPeerPm = nl80211_sta_info::NL80211_STA_INFO_NONPEER_PM as u16,
+    /// Total received bytes (MPDU length) (`u64`, from this station)
+    RxBytes64 = nl80211_sta_info::NL80211_STA_INFO_RX_BYTES64 as u16,
+    /// Total transmitted bytes (MPDU length) (`u64`, to this station)
+    TxBytes64 = nl80211_sta_info::NL80211_STA_INFO_TX_BYTES64 as u16,
+    /// Per-chain signal strength of last PPDU contains a nested array of
+    /// signal strength attributes (`i8`, dBm)
+    ChainSignal = nl80211_sta_info::NL80211_STA_INFO_CHAIN_SIGNAL as u16,
+    /// Per-chain signal strength average. Same format as [`Nl80211StaInfo::ChainSignal`].
+    ChainSignalAvg = nl80211_sta_info::NL80211_STA_INFO_CHAIN_SIGNAL_AVG as u16,
+    /// Expected throughput considering also the 802.11 header (`u32`, kbps)
+    ExpectedThroughput = nl80211_sta_info::NL80211_STA_INFO_EXPECTED_THROUGHPUT as u16,
+    /// RX packets dropped for unspecified reasons (`u64`)
+    RxDropMisc = nl80211_sta_info::NL80211_STA_INFO_RX_DROP_MISC as u16,
+    /// Number of beacons received from this peer (`u64`)
+    BeaconRx = nl80211_sta_info::NL80211_STA_INFO_BEACON_RX as u16,
+    /// Signal strength average for beacons only (`u8`, dBm)
+    BeaconSignalAvg = nl80211_sta_info::NL80211_STA_INFO_BEACON_SIGNAL_AVG as u16,
+    /// Per-TID statistics (see [`Nl80211TidStats`]).
+    ///
+    /// This is a nested attribute where each the inner attribute number is the TID+1
+    /// and the special TID 16 (i.e. value 17) is used for non-QoS frames; each one of
+    /// those is again nested with [`Nl80211TidStats`] attributes carrying the actual values.
+    TidStats = nl80211_sta_info::NL80211_STA_INFO_TID_STATS as u16,
+    /// Aggregate PPDU duration for all frames received from the station (`u64`, usec)
+    RxDuration = nl80211_sta_info::NL80211_STA_INFO_RX_DURATION as u16,
+    /// Attribute used for padding for 64-bit alignment
+    Pad = nl80211_sta_info::NL80211_STA_INFO_PAD as u16,
+    /// Signal strength of the last ACK frame (`u8`, dBm)
+    AckSignal = nl80211_sta_info::NL80211_STA_INFO_ACK_SIGNAL as u16,
+    /// Avg signal strength of ACK frames (`i8`, dBm)
+    AckSignalAvg = nl80211_sta_info::NL80211_STA_INFO_ACK_SIGNAL_AVG as u16,
+    /// Total number of received packets (MPDUs) (`u32`, from this station)
+    RxMpdus = nl80211_sta_info::NL80211_STA_INFO_RX_MPDUS as u16,
+    /// Total number of packets (MPDUs) received with an FCS error (u32, from this station).
+    /// This count may not include some packets with an FCS error due to TA corruption. Hence
+    /// this counter might not be fully accurate.
+    FcsErrorCount = nl80211_sta_info::NL80211_STA_INFO_FCS_ERROR_COUNT as u16,
+    /// Set to true if STA has a path to a mesh gate (`u8`, 0 or 1)
+    ConnectedToGate = nl80211_sta_info::NL80211_STA_INFO_CONNECTED_TO_GATE as u16,
+    /// Aggregate PPDU duration for all frames sent to the station (`u64`, usec)
+    TxDuration = nl80211_sta_info::NL80211_STA_INFO_TX_DURATION as u16,
+    /// Current airtime weight for station (`u16`)
+    AirtimeWeight = nl80211_sta_info::NL80211_STA_INFO_AIRTIME_WEIGHT as u16,
+    /// Airtime link metric for mesh station
+    AirtimeLinkMetric = nl80211_sta_info::NL80211_STA_INFO_AIRTIME_LINK_METRIC as u16,
+    /// Timestamp (CLOCK_BOOTTIME, nanoseconds) of STA's association
+    AssocAtBoottime = nl80211_sta_info::NL80211_STA_INFO_ASSOC_AT_BOOTTIME as u16,
+    /// Set to true if STA has a path to authentication server (`u8`, 0 or 1)
+    ConnectedToAs = nl80211_sta_info::NL80211_STA_INFO_CONNECTED_TO_AS as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211StaInfo {}
+
+/// Per-TID statistics attributes (`enum nl80211_tid_stats`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211TidStats {
+    /// Number of MSDUs received (`u64`)
+    RxMsdu = nl80211_tid_stats::NL80211_TID_STATS_RX_MSDU as u16,
+    /// Number of MSDUs transmitted (or attempted to transmit; `u64`)
+    TxMsdu = nl80211_tid_stats::NL80211_TID_STATS_TX_MSDU as u16,
+    /// Number of retries for transmitted MSDUs (not counting the first attempt; `u64`)
+    TxMsduRetries = nl80211_tid_stats::NL80211_TID_STATS_TX_MSDU_RETRIES as u16,
+    /// Number of failed transmitted MSDUs (`u64`)
+    TxMsduFailed = nl80211_tid_stats::NL80211_TID_STATS_TX_MSDU_FAILED as u16,
+    /// Attribute used for padding for 64-bit alignment
+    Pad = nl80211_tid_stats::NL80211_TID_STATS_PAD as u16,
+    /// TXQ stats (nested attribute)
+    TxqStats = nl80211_tid_stats::NL80211_TID_STATS_TXQ_STATS as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211TidStats {}
+
+/// Per TXQ statistics attributes (`enum nl80211_txq_stats`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211TxqStats {
+    /// Number of bytes currently backlogged
+    BacklogBytes = nl80211_txq_stats::NL80211_TXQ_STATS_BACKLOG_BYTES as u16,
+    /// Number of packets currently backlogged
+    BacklogPackets = nl80211_txq_stats::NL80211_TXQ_STATS_BACKLOG_PACKETS as u16,
+    /// Total number of new flows seen
+    Flows = nl80211_txq_stats::NL80211_TXQ_STATS_FLOWS as u16,
+    /// Total number of packet drops
+    Drops = nl80211_txq_stats::NL80211_TXQ_STATS_DROPS as u16,
+    /// Total number of packet ECN marks
+    EcnMarks = nl80211_txq_stats::NL80211_TXQ_STATS_ECN_MARKS as u16,
+    /// Number of drops due to queue space overflow
+    Overlimit = nl80211_txq_stats::NL80211_TXQ_STATS_OVERLIMIT as u16,
+    /// Number of drops due to memory limit overflow (only for per-phy stats)
+    Overmemory = nl80211_txq_stats::NL80211_TXQ_STATS_OVERMEMORY as u16,
+    /// Number of hash collisions
+    Collisions = nl80211_txq_stats::NL80211_TXQ_STATS_COLLISIONS as u16,
+    /// Total number of bytes dequeued from TXQ
+    Bytes = nl80211_txq_stats::NL80211_TXQ_STATS_TX_BYTES as u16,
+    /// Total number of packets dequeued from TXQ
+    Packets = nl80211_txq_stats::NL80211_TXQ_STATS_TX_PACKETS as u16,
+    /// Number of flow buckets for phy
+    MaxFlows = nl80211_txq_stats::NL80211_TXQ_STATS_MAX_FLOWS as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211TxqStats {}
 
 /// Band attributes (`enum nl80211_band_attr`)
 ///
@@ -2648,6 +3220,24 @@ pub enum Nl80211FrequencyAttr {
     Allow6GhzVlpAp = nl80211_frequency_attr::NL80211_FREQUENCY_ATTR_ALLOW_6GHZ_VLP_AP as u16,
     /// This channel can be active in 20 MHz bandwidth, despite being [`Nl80211FrequencyAttr::NoIr`].
     Allow20MhzActivity = nl80211_frequency_attr::NL80211_FREQUENCY_ATTR_ALLOW_20MHZ_ACTIVITY as u16,
+    // v7.1+
+    /// 4 MHz operation is not allowed on this channel in current regulatory domain.
+    No4Mhz = nl80211_frequency_attr::NL80211_FREQUENCY_ATTR_NO_4MHZ as u16,
+    /// 8 MHz operation is not allowed on this channel in current regulatory domain.
+    No8MHz = nl80211_frequency_attr::NL80211_FREQUENCY_ATTR_NO_8MHZ as u16,
+    /// 16 MHz operation is not allowed on this channel in current regulatory domain.
+    No16MHz = nl80211_frequency_attr::NL80211_FREQUENCY_ATTR_NO_16MHZ as u16,
+    /// Channel is not permitted for use as a primary channel.
+    ///
+    /// Does not prevent the channel from existing as a non-primary subchannel.
+    /// Only applicable to S1G channels.
+    S1gNoPrimary = nl80211_frequency_attr::NL80211_FREQUENCY_ATTR_S1G_NO_PRIMARY as u16,
+    /// UHR operation is not allowed on this channel in current regulatory domain.
+    NoUhr = nl80211_frequency_attr::NL80211_FREQUENCY_ATTR_NO_UHR as u16,
+    /// Channel Availability Check (CAC) start time (CLOCK_BOOTTIME, nanoseconds).
+    ///
+    /// Only present when CAC is currently in progress on this channel.
+    CacStartTime = nl80211_frequency_attr::NL80211_FREQUENCY_ATTR_CAC_START_TIME as u16,
 }
 impl neli::consts::genl::NlAttrType for Nl80211FrequencyAttr {}
 
@@ -2662,6 +3252,203 @@ pub enum Nl80211BitrateAttr {
     _2GhzShortpreamble = nl80211_bitrate_attr::NL80211_BITRATE_ATTR_2GHZ_SHORTPREAMBLE as u16,
 }
 impl neli::consts::genl::NlAttrType for Nl80211BitrateAttr {}
+
+/// Indicates the initiator of a reg domain request (`enum nl80211_reg_initiator`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211RegInitiator {
+    /// Core queried CRDA for a dynamic world regulatory domain.
+    SetByCore = nl80211_reg_initiator::NL80211_REGDOM_SET_BY_CORE as u16,
+    /// User asked the wireless core to set the regulatory domain.
+    SetByUser = nl80211_reg_initiator::NL80211_REGDOM_SET_BY_USER as u16,
+    /// A wireless drivers has hinted to the wireless core it thinks its knows the regulatory domain we should be in.
+    SetByDriver = nl80211_reg_initiator::NL80211_REGDOM_SET_BY_DRIVER as u16,
+    /// The wireless core has received an 802.11 country information element with regulatory information
+    /// it thinks we should consider.
+    ///
+    /// `cfg80211` only processes the country code from the IE, and relies on the regulatory domain information
+    /// structure passed by userspace (CRDA) from our wireless-regdb.
+    ///
+    /// If a channel is enabled but the country code indicates it should be disabled we disable the channel
+    /// and re-enable it upon disassociation.
+    SetByCountryIe = nl80211_reg_initiator::NL80211_REGDOM_SET_BY_COUNTRY_IE as u16,
+}
+
+/// Specifies the type of regulatory domain (`enum nl80211_reg_type`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211RegType {
+    /// The regulatory domain set is one that pertains to a specific country.
+    ///
+    /// When this is set you can count on the ISO / IEC 3166 alpha2 country code being valid.
+    Country = nl80211_reg_type::NL80211_REGDOM_TYPE_COUNTRY as u16,
+    /// The regulatory set domain is the world regulatory domain.
+    World = nl80211_reg_type::NL80211_REGDOM_TYPE_WORLD as u16,
+    /// The regulatory domain set is a custom driver specific world regulatory domain.
+    ///
+    /// These do not apply system-wide and are only applicable to the individual devices which have
+    /// requested them to be applied.
+    CustomWorld = nl80211_reg_type::NL80211_REGDOM_TYPE_CUSTOM_WORLD as u16,
+    /// The regulatory domain set is the product of an intersection between two regulatory domains
+    /// -- the previously set regulatory domain on the system and the last accepted regulatory domain
+    /// request to be processed.
+    Intersection = nl80211_reg_type::NL80211_REGDOM_TYPE_INTERSECTION as u16,
+}
+
+/// Regulatory rule attributes (`enum nl80211_reg_rule_attr`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211RegRuleAttr {
+    /// A set of flags which specify additional considerations for a given frequency range.
+    /// These are the [`Nl80211RegRuleFlags`].
+    Flags = nl80211_reg_rule_attr::NL80211_ATTR_REG_RULE_FLAGS as u16,
+    /// Starting frequencry for the regulatory rule in KHz.
+    ///
+    /// This is not a center of frequency but an actual regulatory band edge.
+    FreqRangeStart = nl80211_reg_rule_attr::NL80211_ATTR_FREQ_RANGE_START as u16,
+    /// Ending frequency for the regulatory rule in KHz.
+    ///
+    /// This is not a center a frequency but an actual regulatory band edge.
+    FreqRangeEnd = nl80211_reg_rule_attr::NL80211_ATTR_FREQ_RANGE_END as u16,
+    /// Maximum allowed bandwidth for this frequency range, in KHz.
+    FreqRangeMaxBw = nl80211_reg_rule_attr::NL80211_ATTR_FREQ_RANGE_MAX_BW as u16,
+    /// The maximum allowed antenna gain for a given frequency range. The value is in mBi (100 * dBi).
+    ///
+    /// If you don't have one then don't send this.
+    PowerRuleMaxAntGain = nl80211_reg_rule_attr::NL80211_ATTR_POWER_RULE_MAX_ANT_GAIN as u16,
+    /// The maximum allowed EIRP for a given frequency range. The value is in mBm (100 * dBm).
+    PowerRuleMaxEirp = nl80211_reg_rule_attr::NL80211_ATTR_POWER_RULE_MAX_EIRP as u16,
+    /// DFS CAC time in milliseconds.
+    ///
+    /// If not present or 0 default CAC time will be used.
+    DfsCacTime = nl80211_reg_rule_attr::NL80211_ATTR_DFS_CAC_TIME as u16,
+    /// Power spectral density (in dBm). This could be negative.
+    PowerRulePsd = nl80211_reg_rule_attr::NL80211_ATTR_POWER_RULE_PSD as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211RegRuleAttr {}
+
+impl_flags!(
+    /// Regulatory rule flags (`enum nl80211_reg_rule_flags`)
+    pub Nl80211RegRuleFlags: u32 {
+        /// OFDM modulation not allowed
+        NoOfdm = nl80211_reg_rule_flags::NL80211_RRF_NO_OFDM as u32,
+        /// CCK modulation not allowed
+        NoCck = nl80211_reg_rule_flags::NL80211_RRF_NO_CCK  as u32,
+        /// Indoor operation not allowed
+        NoIndoor = nl80211_reg_rule_flags::NL80211_RRF_NO_INDOOR as u32,
+        /// Outdoor operation not allowed
+        NoOutdoor = nl80211_reg_rule_flags::NL80211_RRF_NO_OUTDOOR as u32,
+        /// DFS support is required to be used
+        Dfs = nl80211_reg_rule_flags::NL80211_RRF_DFS as u32,
+        /// This is only for Point To Point links
+        PtpOnly = nl80211_reg_rule_flags::NL80211_RRF_PTP_ONLY as u32,
+        /// This is only for Point To Multi Point links
+        PtmpOnly = nl80211_reg_rule_flags::NL80211_RRF_PTMP_ONLY as u32,
+        /// No mechanisms that initiate radiation are allowed, this includes probe requests or modes
+        /// of operation that require beaconing.
+        NoIr = nl80211_reg_rule_flags::NL80211_RRF_NO_IR as u32,
+        /// Obsolete, same as [`Nl80211RegRuleFlags::NoIr`]
+        NoIbss = nl80211_reg_rule_flags::__NL80211_RRF_NO_IBSS as u32,
+        /// Maximum available bandwidth should be calculated base on contiguous rules and wider channels
+        /// will be allowed to cross multiple contiguous/overlapping frequency ranges.
+        AutoBw = nl80211_reg_rule_flags::NL80211_RRF_AUTO_BW as u32,
+        /// See [`Nl80211FrequencyAttr::IrConcurrent`]
+        IrConcurrent = nl80211_reg_rule_flags::NL80211_RRF_IR_CONCURRENT as u32,
+        /// Channels can't be used in HT40- operation
+        NoHt40Minus = nl80211_reg_rule_flags::NL80211_RRF_NO_HT40MINUS as u32,
+        /// Channels can't be used in HT40+ operation
+        NoHt40Plus = nl80211_reg_rule_flags::NL80211_RRF_NO_HT40PLUS as u32,
+        /// 80 MHz operation not allowed
+        No80Mhz= nl80211_reg_rule_flags::NL80211_RRF_NO_80MHZ as u32,
+        /// 160 MHz operation not allowed
+        No160Mhz = nl80211_reg_rule_flags::NL80211_RRF_NO_160MHZ as u32,
+        /// HE operation not allowed
+        NoHe = nl80211_reg_rule_flags::NL80211_RRF_NO_HE as u32,
+        /// 320 MHz operation not allowed
+        No320Mhz = nl80211_reg_rule_flags::NL80211_RRF_NO_320MHZ as u32,
+        /// EHT operation not allowed
+        NoEht = nl80211_reg_rule_flags::NL80211_RRF_NO_EHT as u32,
+        /// Ruleset has power spectral density value
+        Psd = nl80211_reg_rule_flags::NL80211_RRF_PSD   as u32,
+        /// Operation on this channel is allowed for peer-to-peer or adhoc communication under the control
+        /// of a DFS master which operates on the same channel (FCC-594280 D01 Section B.3).
+        ///
+        /// Should be used together with [`Nl80211RegRuleFlags::Dfs`] only.
+        DfsConcurrent = nl80211_reg_rule_flags::NL80211_RRF_DFS_CONCURRENT          as u32,
+        /// Client connection to VLP AP not allowed
+        No6GhzVlpClient = nl80211_reg_rule_flags::NL80211_RRF_NO_6GHZ_VLP_CLIENT     as u32,
+        /// Client connection to AFC AP not allowed
+        No6GhzAfcClient = nl80211_reg_rule_flags::NL80211_RRF_NO_6GHZ_AFC_CLIENT    as u32,
+        /// Very low power (VLP) AP can be permitted despite [`Nl80211RegRuleFlags::NoIr`] configuration.
+        Allow6GhzVlpAp = nl80211_reg_rule_flags::NL80211_RRF_ALLOW_6GHZ_VLP_AP    as u32,
+        /// Allow activity in 20 MHz bandwidth, despite [`Nl80211RegRuleFlags::NoIr`] configuration.
+        Allow20MhzActivity = nl80211_reg_rule_flags::NL80211_RRF_ALLOW_20MHZ_ACTIVITY as u32,
+        /// UHR operation not allowed.
+        NoUhr = nl80211_reg_rule_flags::NL80211_RRF_NO_UHR as u32,
+    }
+);
+
+/// Regulatory DFS regions (`enum nl80211_dfs_regions`)
+#[neli::neli_enum(serialized_type = "u8")]
+pub enum Nl80211DfsRegions {
+    /// Country has no DFS master region specified
+    Unset = nl80211_dfs_regions::NL80211_DFS_UNSET as u8,
+    /// Country follows DFS master rules from FCC
+    Fcc = nl80211_dfs_regions::NL80211_DFS_FCC as u8,
+    /// Country follows DFS master rules from ETSI
+    Etsi = nl80211_dfs_regions::NL80211_DFS_ETSI as u8,
+    /// Country follows DFS master rules from JP/MKK/Telec
+    Jp = nl80211_dfs_regions::NL80211_DFS_JP as u8,
+}
+
+/// Survey information (`enum nl80211_survey_info`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211SurveyInfo {
+    /// Attribute number 0 is reserved
+    Invalid = nl80211_survey_info::__NL80211_SURVEY_INFO_INVALID as u16,
+    /// Center frequency of channel
+    Frequency = nl80211_survey_info::NL80211_SURVEY_INFO_FREQUENCY as u16,
+    /// Noise level of channel (`u8`, dBm)
+    Noise = nl80211_survey_info::NL80211_SURVEY_INFO_NOISE as u16,
+    /// Channel is currently being used
+    InUse = nl80211_survey_info::NL80211_SURVEY_INFO_IN_USE as u16,
+    /// Amount of time (in ms) that the radio was turned on (on channel or globally)
+    Time = nl80211_survey_info::NL80211_SURVEY_INFO_TIME as u16,
+    /// Amount of the time the primary channel was sensed busy (either due to activity or energy detect)
+    TimeBusy = nl80211_survey_info::NL80211_SURVEY_INFO_TIME_BUSY as u16,
+    /// Amount of time the extension channel was sensed busy
+    TimeExtBusy = nl80211_survey_info::NL80211_SURVEY_INFO_TIME_EXT_BUSY as u16,
+    /// Amount of time the radio spent receiving data (on channel or globally)
+    TimeRx = nl80211_survey_info::NL80211_SURVEY_INFO_TIME_RX as u16,
+    /// Amount of time the radio spent transmitting data (on channel or globally)
+    TimeTx = nl80211_survey_info::NL80211_SURVEY_INFO_TIME_TX as u16,
+    /// Time the radio spent for scan (on this channel or globally)
+    TimeScan = nl80211_survey_info::NL80211_SURVEY_INFO_TIME_SCAN as u16,
+    /// Attribute used for padding for 64-bit alignment
+    Pad = nl80211_survey_info::NL80211_SURVEY_INFO_PAD as u16,
+    /// Amount of time the radio spent receiving frames destined to the local BSS
+    TimeBssRx = nl80211_survey_info::NL80211_SURVEY_INFO_TIME_BSS_RX as u16,
+    /// Center frequency offset in KHz
+    FrequencyOffset = nl80211_survey_info::NL80211_SURVEY_INFO_FREQUENCY_OFFSET as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211SurveyInfo {}
+
+impl_flags!(
+    /// Monitor configuration flags (`enum nl80211_mntr_flags`)
+    pub Nl80211MntrFlags: u32 {
+        /// Pass frames with bad FCS
+        FcsFail = 1 << nl80211_mntr_flags::NL80211_MNTR_FLAG_FCSFAIL as u32,
+        /// Pass frames with bad PLCP
+        PlcpFail = 1 << nl80211_mntr_flags::NL80211_MNTR_FLAG_PLCPFAIL as u32,
+        /// Pass control frames
+        Control = 1 << nl80211_mntr_flags::NL80211_MNTR_FLAG_CONTROL as u32,
+        /// Disable BSSID filtering
+        OtherBss = 1 << nl80211_mntr_flags::NL80211_MNTR_FLAG_OTHER_BSS as u32,
+        /// Deprecated. Will unconditionally be refused
+        CookFrames = 1 << nl80211_mntr_flags::NL80211_MNTR_FLAG_COOK_FRAMES as u32,
+        /// Use the configured MAC address and ACK incoming unicast packets
+        Active = 1 << nl80211_mntr_flags::NL80211_MNTR_FLAG_ACTIVE as u32,
+        /// Do not pass local TX packets
+        SkipTx = 1 << nl80211_mntr_flags::NL80211_MNTR_FLAG_SKIP_TX as u32,
+    }
+);
 
 /// Channel type (`enum nl80211_channel_type`)
 ///
@@ -2679,6 +3466,22 @@ pub enum Nl80211ChannelType {
     Ht40Plus = nl80211_channel_type::NL80211_CHAN_HT40PLUS as u32,
     /// 40 MHz HT channel, secondary channel above the control channel
     Ht40Minus = nl80211_channel_type::NL80211_CHAN_HT40MINUS as u32,
+}
+
+/// Key mode (`enum nl80211_key_mode`)
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211KeyMode {
+    /// (Default) Key can be used for RX and TX immediately.
+    ///
+    /// The following modes can only be selected for unicast keys and when the
+    /// driver supports @NL80211_EXT_FEATURE_EXT_KEY_ID:
+    RxTx = nl80211_key_mode::NL80211_KEY_RX_TX as u32,
+    /// Only allowed in combination with [`Nl80211Command::NewKey`]: Unicast key can only be used for RX,
+    /// TX not allowed, yet.
+    NoTx = nl80211_key_mode::NL80211_KEY_NO_TX as u32,
+    /// Only allowed in combination with [`Nl80211Command::SetKey`]: The unicast key identified by idx and MAC
+    /// is cleared for TX and becomes the preferred TX key for the station.
+    SetTx = nl80211_key_mode::NL80211_KEY_SET_TX as u32,
 }
 
 /// Channel width definitions (`enum nl80211_chan_width`)
@@ -2715,3 +3518,833 @@ pub enum Nl80211ChanWidth {
     /// 320 MHz channel, the [`Nl80211Attr::CenterFreq1`] attribute must be provided as well
     Width320 = nl80211_chan_width::NL80211_CHAN_WIDTH_320 as u32,
 }
+
+impl_flags!(
+    /// Bitmap indicating possible BSS use (`enum nl80211_bss_use_for`)
+    pub Nl80211BssUseFor: u32 {
+        /// Use this BSS for normal "connection", including IBSS/MBSS depending on the type.
+        Normal = nl80211_bss_use_for::NL80211_BSS_USE_FOR_NORMAL as u32,
+        /// This BSS can be used as a link in an MLO connection.
+        ///
+        /// Note that for an MLO connection, all links including the assoc link must have this flag set,
+        /// and the assoc link must additionally have [`Nl80211BssUseFor::Normal`] set.
+        MldLink = nl80211_bss_use_for::NL80211_BSS_USE_FOR_MLD_LINK as u32,
+    }
+);
+
+impl_flags!(
+    /// Reason(s) connection to a BSS isn't possible (`enum nl80211_bss_cannot_use_reasons`)
+    pub Nl80211BssCannotUseReasons: u64 {
+        /// NSTR nonprimary links aren't supported by the device, and this BSS entry represents one.
+        NstrNonPrimary = nl80211_bss_cannot_use_reasons::NL80211_BSS_CANNOT_USE_NSTR_NONPRIMARY as u64,
+        /// STA is not supporting the AP power type (SP, VLP, AP) that the AP uses.
+        SixGhzPowerMismatch = nl80211_bss_cannot_use_reasons::NL80211_BSS_CANNOT_USE_6GHZ_PWR_MISMATCH as u64,
+    }
+);
+
+/// Netlink attributes for a BSS (`enum nl80211_bss`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211Bss {
+    /// BSSID of the BSS (6 octets)
+    Bssid = nl80211_bss::NL80211_BSS_BSSID as u16,
+    /// Frequency in MHz (`u32`)
+    Frequency = nl80211_bss::NL80211_BSS_FREQUENCY as u16,
+    /// TSF of the received probe response/beacon (u64) (if [`Nl80211Bss::PrespData`] is present then
+    /// this is known to be from a probe response, otherwise it may be from the same beacon that the
+    /// [`Nl80211Bss::BeaconTsf`] will be from)
+    Tsf = nl80211_bss::NL80211_BSS_TSF as u16,
+    /// Beacon interval of the (I)BSS (u16)
+    BeaconInterval = nl80211_bss::NL80211_BSS_BEACON_INTERVAL as u16,
+    /// Capability field (CPU order, u16)
+    Capability = nl80211_bss::NL80211_BSS_CAPABILITY as u16,
+    /// Binary attribute containing the raw information elements from the probe response/beacon (bin);
+    ///	if the [`Nl80211Bss::BeaconIes`] attribute is present and the data is different then the IEs here
+    /// are from a Probe Response frame; otherwise they are from a Beacon frame. However, if the driver
+    /// does not indicate the source of the IEs, these IEs may be from either frame subtype. If present,
+    /// the [`Nl80211Bss::PrespData`] attribute indicates that the data here is known to be from a probe
+    /// response, without any heuristics.
+    InformationElements = nl80211_bss::NL80211_BSS_INFORMATION_ELEMENTS as u16,
+    /// Signal strength of probe response/beacon in mBm (100 * dBm) (`i32`)
+    SignalMbm = nl80211_bss::NL80211_BSS_SIGNAL_MBM as u16,
+    /// Signal strength of the probe response/beacon in unspecified units, scaled to 0..100 (`u8`)
+    SignalUnspec = nl80211_bss::NL80211_BSS_SIGNAL_UNSPEC as u16,
+    /// Status, if this BSS is "used"
+    Status = nl80211_bss::NL80211_BSS_STATUS as u16,
+    /// Age of this BSS entry in ms
+    SeenMsAgo = nl80211_bss::NL80211_BSS_SEEN_MS_AGO as u16,
+    /// Binary attribute containing the raw information elements from a Beacon frame (bin);
+    /// not present if no Beacon frame has yet been received
+    BeaconIes = nl80211_bss::NL80211_BSS_BEACON_IES as u16,
+    /// No longer used. Channel width of the control channel (`u32`, `enum nl80211_bss_scan_width`)
+    ChanWidth = nl80211_bss::NL80211_BSS_CHAN_WIDTH as u16,
+    /// TSF of the last received beacon (`u64`) (not present if no beacon frame has been received yet)
+    BeaconTsf = nl80211_bss::NL80211_BSS_BEACON_TSF as u16,
+    /// The data in [`Nl80211Bss::InformationElements`] and [`Nl80211Bss::Tsf`] is known to be from a
+    /// probe response (flag attribute)
+    PrespData = nl80211_bss::NL80211_BSS_PRESP_DATA as u16,
+    /// `CLOCK_BOOTTIME` timestamp when this entry was last updated by a received frame. The value is
+    /// expected to be accurate to about 10ms. (`u64`, nanoseconds)
+    LastSeenSinceBootTime = nl80211_bss::NL80211_BSS_LAST_SEEN_BOOTTIME as u16,
+    /// Attribute used for padding for 64-bit alignment
+    Pad = nl80211_bss::NL80211_BSS_PAD as u16,
+    /// The time at the start of reception of the first octet of the timestamp field of the last
+    /// beacon/probe received for this BSS. The time is the TSF of the BSS specified by
+    ///	[`Nl80211Bss::ParentBssid`]. (`u64`).
+    ParentTsf = nl80211_bss::NL80211_BSS_PARENT_TSF as u16,
+    /// The BSS according to which [`Nl80211Bss::ParentTsf`] is set.
+    ParentBssid = nl80211_bss::NL80211_BSS_PARENT_BSSID as u16,
+    /// Per-chain signal strength of last BSS update. Contains a nested array of signal strength
+    /// attributes (`u8`, dBm), using the nesting index as the antenna number.
+    ChainSignal = nl80211_bss::NL80211_BSS_CHAIN_SIGNAL as u16,
+    /// Frequency offset in KHz
+    FrequencyOffset = nl80211_bss::NL80211_BSS_FREQUENCY_OFFSET as u16,
+    /// MLO link ID of the BSS (`u8`).
+    MloLinkId = nl80211_bss::NL80211_BSS_MLO_LINK_ID as u16,
+    /// MLD address of this BSS if connected to it.
+    MldAddr = nl80211_bss::NL80211_BSS_MLD_ADDR as u16,
+    /// `u32` bitmap attribute indicating what the BSS can be used for, see [`Nl80211BssUseFor`].
+    UseFor = nl80211_bss::NL80211_BSS_USE_FOR as u16,
+    /// Indicates the reason that this BSS cannot be used for all or some of the possible uses by the
+    /// device reporting it, even though its presence was detected.
+    ///
+    /// This is a `u64` attribute containing a bitmap of values from [`Nl80211BssCannotUseReasons`],
+    /// note that the attribute may be missing if no reasons are specified.
+    CannotUseReasons = nl80211_bss::NL80211_BSS_CANNOT_USE_REASONS as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211Bss {}
+
+/// Authentication type (`enum nl80211_auth_type`)
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211AuthType {
+    /// Open System authentication
+    OpenSystem = nl80211_auth_type::NL80211_AUTHTYPE_OPEN_SYSTEM as u32,
+    /// Shared Key authentication (WEP only)
+    SharedKey = nl80211_auth_type::NL80211_AUTHTYPE_SHARED_KEY as u32,
+    /// Fast BSS Transition (IEEE 802.11r)
+    FT = nl80211_auth_type::NL80211_AUTHTYPE_FT as u32,
+    /// Network EAP (some Cisco APs and mainly LEAP)
+    NetworkEap = nl80211_auth_type::NL80211_AUTHTYPE_NETWORK_EAP as u32,
+    /// Simultaneous authentication of equals
+    Sae = nl80211_auth_type::NL80211_AUTHTYPE_SAE as u32,
+    /// Fast Initial Link Setup shared key
+    FilsSk = nl80211_auth_type::NL80211_AUTHTYPE_FILS_SK as u32,
+    /// Fast Initial Link Setup shared key with PFS
+    FilsSkPfs = nl80211_auth_type::NL80211_AUTHTYPE_FILS_SK_PFS as u32,
+    /// Fast Initial Link Setup public key
+    FilsPk = nl80211_auth_type::NL80211_AUTHTYPE_FILS_PK as u32,
+    /// Enhanced Privacy Protection Key Exchange
+    Eppke = nl80211_auth_type::NL80211_AUTHTYPE_EPPKE as u32,
+    /// IEEE 802.1X authentication utilizing Authentication frames
+    Ieee8021x = nl80211_auth_type::NL80211_AUTHTYPE_IEEE8021X as u32,
+}
+
+/// Key type (`enum nl80211_key_type`)
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211KeyType {
+    /// Group (broadcast/multicast) key.
+    Group = nl80211_key_type::NL80211_KEYTYPE_GROUP as u32,
+    /// Pairwise (unicast/individual) key.
+    Pairwise = nl80211_key_type::NL80211_KEYTYPE_PAIRWISE as u32,
+    /// PeerKey (DLS).
+    PeerKey = nl80211_key_type::NL80211_KEYTYPE_PEERKEY as u32,
+}
+
+/// Management frame protection state (`enum nl80211_mfp`)
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211Mfp {
+    /// Management frame protection not used.
+    No = nl80211_mfp::NL80211_MFP_NO as u32,
+    /// Management frame protection required.
+    Required = nl80211_mfp::NL80211_MFP_REQUIRED as u32,
+    /// Management frame protection is optional.
+    Optional = nl80211_mfp::NL80211_MFP_OPTIONAL as u32,
+}
+
+impl_flags!(
+    // TODO: No docstring in headerfile, this looks legacy?
+    /// TODO (`enum nl80211_wpa_versions`)
+    pub Nl80211WpaVersions: u32 {
+        WpaVersion1 = nl80211_wpa_versions::NL80211_WPA_VERSION_1 as u32,
+        WpaVersion2 = nl80211_wpa_versions::NL80211_WPA_VERSION_2 as u32,
+        WpaVersion3 = nl80211_wpa_versions::NL80211_WPA_VERSION_3 as u32,
+    }
+);
+
+/// Key default types (`enum nl80211_key_default_types`)
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211KeyDefaultTypes {
+    /// Invalid.
+    Invalid = nl80211_key_default_types::__NL80211_KEY_DEFAULT_TYPE_INVALID as u32,
+    /// Key should be used as default unicast key
+    Unicast = nl80211_key_default_types::NL80211_KEY_DEFAULT_TYPE_UNICAST as u32,
+    /// Key should be used as default multicast key
+    Multicast = nl80211_key_default_types::NL80211_KEY_DEFAULT_TYPE_MULTICAST as u32,
+}
+
+/// Key attributes (`enum nl80211_key_attributes`)
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211KeyAttributes {
+    /// Invalid
+    Invalid = nl80211_key_attributes::__NL80211_KEY_INVALID as u32,
+    /// Temporal key data; for TKIP this consists of 16 bytes encryption key followed by 8 bytes each for TX and RX MIC keys.
+    Data = nl80211_key_attributes::NL80211_KEY_DATA as u32,
+    /// Key ID (`u8`, 0-3).
+    Idx = nl80211_key_attributes::NL80211_KEY_IDX as u32,
+    /// Key cipher suite (`u32`, as defined by IEEE 802.11 section 7.3.2.25.1, e.g. 0x000FAC04)
+    Cipher = nl80211_key_attributes::NL80211_KEY_CIPHER as u32,
+    /// Transmit key sequence number (IV/PN) for TKIP and CCMP keys, each six bytes in little endian.
+    Seq = nl80211_key_attributes::NL80211_KEY_SEQ as u32,
+    /// Flag indicating default key.
+    Default = nl80211_key_attributes::NL80211_KEY_DEFAULT as u32,
+    /// Flag indicating default management key.
+    DefaultMgmt = nl80211_key_attributes::NL80211_KEY_DEFAULT_MGMT as u32,
+    /// The key type from [`Nl80211KeyType`], if not specified the default depends on whether a MAC address was
+    /// given with the command using the key or not (`u32`).
+    Type = nl80211_key_attributes::NL80211_KEY_TYPE as u32,
+    /// A nested attribute containing flags attributes, specifying what a key should be set as default as.
+    /// See [`Nl80211KeyDefaultTypes`].
+    DefaultTypes = nl80211_key_attributes::NL80211_KEY_DEFAULT_TYPES as u32,
+    /// The mode from [`Nl80211KeyMode`]. Defaults to [`Nl80211KeyMode::RxTx`].
+    Mode = nl80211_key_attributes::NL80211_KEY_MODE as u32,
+    /// Flag indicating default Beacon frame key.
+    DefaultBeacon = nl80211_key_attributes::NL80211_KEY_DEFAULT_BEACON as u32,
+    // v7.2+
+    /// LTF key seed is used by the driver to generate secure LTF keys used in case of peer measurement request with FTM
+    /// request type as either `NL80211_PMSR_FTM_REQ_ATTR_NON_TRIGGER_BASED` or `NL80211_PMSR_FTM_REQ_ATTR_TRIGGER_BASED`
+    ///
+    /// Secure LTF key seeds will help enable PHY security in peer measurement session.
+    ///
+    /// The LTF key seed is installed along with the TK (Temporal Key) using [`Nl80211Command::NewKey`]. The TK is configured
+    /// using the [`Nl80211Attr::KeyData`] attribute, while the LTF key seed is configured using this attribute. Both keys must
+    /// be configured before initiation of peer measurement to ensure peer measurement session is secure.
+    ///
+    /// Only valid if [`Nl80211ExtFeatureIndex::SetKeyLtfSeed`] is set.
+    ///
+    /// This attribute is restricted to pairwise keys ([`Nl80211KeyType::Pairwise`]).
+    // TODO: enum nl80211_peer_measurement_ftm_req
+    LtfSeed = nl80211_key_attributes::NL80211_KEY_LTF_SEED as u32,
+}
+
+/// Frequency band (`enum nl80211_band`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211Band {
+    /// 2.4 GHz ISM band
+    Band2Ghz = nl80211_band::NL80211_BAND_2GHZ as u16,
+    /// Around 5 GHz band (4.9 - 5.7 GHz)
+    Band5Ghz = nl80211_band::NL80211_BAND_5GHZ as u16,
+    /// Around 60 GHz band (58.32 - 69.12 GHz)
+    Band60Ghz = nl80211_band::NL80211_BAND_60GHZ as u16,
+    /// Around 6 GHz band (5.9 - 7.2 GHz)
+    Band6Ghz = nl80211_band::NL80211_BAND_6GHZ as u16,
+    /// Around 900MHz, supported by S1G PHYs
+    BandS1Ghz = nl80211_band::NL80211_BAND_S1GHZ as u16,
+    /// Light communication band (placeholder)
+    BandLc = nl80211_band::NL80211_BAND_LC as u16,
+}
+
+/// Connection quality monitor attributes (`enum nl80211_attr_cqm`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211AttrCqm {
+    /// RSSI threshold in dBm. This value specifies the threshold for the RSSI level
+    /// at which an event will be sent. Zero to disable.
+    ///
+    /// Alternatively, if `%NL80211_EXT_FEATURE_CQM_RSSI_LIST` is set, multiple values
+    /// can be supplied as a low-to-high sorted array of threshold values in dBm.
+    /// Events will be sent when the RSSI value crosses any of the thresholds.
+    RssiThold = nl80211_attr_cqm::NL80211_ATTR_CQM_RSSI_THOLD as u16,
+    /// RSSI hysteresis in dBm. This value specifies the minimum amount the RSSI level
+    /// must change after an event before a new event may be issued (to reduce effects
+    /// of RSSI oscillation).
+    RssiHyst = nl80211_attr_cqm::NL80211_ATTR_CQM_RSSI_HYST as u16,
+    /// RSSI threshold event
+    RssiThresholdEvent = nl80211_attr_cqm::NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT as u16,
+    /// `u32` value indicating that this many consecutive packets were not acknowledged by the peer
+    PktLossEvent = nl80211_attr_cqm::NL80211_ATTR_CQM_PKT_LOSS_EVENT as u16,
+    /// TX error rate in %. Minimum % of TX failures during the given [`Nl80211AttrCqm::TxeIntvl`]
+    /// before an [`Nl80211Command::NotifyCqm`] with reported [`Nl80211AttrCqm::TxeRate`]
+    /// [`Nl80211AttrCqm::TxePkts`] is generated.
+    ///
+    /// In upstream Linux kernel, this is only used in the legacy `ath6kl` driver.
+    TxeRate = nl80211_attr_cqm::NL80211_ATTR_CQM_TXE_RATE as u16,
+    /// Number of attempted packets in a given [`Nl80211AttrCqm::TxeIntvl`] before
+    /// [`Nl80211AttrCqm::TxeRate`] is checked.
+    ///
+    /// In upstream Linux kernel, this is only used in the legacy `ath6kl` driver.
+    TxePkts = nl80211_attr_cqm::NL80211_ATTR_CQM_TXE_PKTS as u16,
+    /// Interval in seconds. Specifies the periodic interval in which [`Nl80211AttrCqm::TxePkts`]
+    /// and [`Nl80211AttrCqm::TxeRate`] must be satisfied before generating an
+    /// [`Nl80211Command::NotifyCqm`]. Set to 0 to turn off TX error reporting.
+    ///
+    /// In upstream Linux kernel, this is only used in the legacy `ath6kl` driver.
+    TxeIntvl = nl80211_attr_cqm::NL80211_ATTR_CQM_TXE_INTVL as u16,
+    /// Flag attribute that's set in a beacon loss event
+    BeaconLossEvent = nl80211_attr_cqm::NL80211_ATTR_CQM_BEACON_LOSS_EVENT as u16,
+    /// The RSSI value in dBm that triggered the RSSI threshold event.
+    RssiLevel = nl80211_attr_cqm::NL80211_ATTR_CQM_RSSI_LEVEL as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211AttrCqm {}
+
+/// RSSI threshold event (`enum nl80211_cqm_rssi_threshold_event`)
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211CqmRssiThresholdEvent {
+    /// The RSSI level is lower than the configured threshold
+    Low = nl80211_cqm_rssi_threshold_event::NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW as u32,
+    /// The RSSI is higher than the configured threshold
+    High = nl80211_cqm_rssi_threshold_event::NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH as u32,
+    /// Reserved, never sent
+    BeaconLoss = nl80211_cqm_rssi_threshold_event::NL80211_CQM_RSSI_BEACON_LOSS_EVENT as u32,
+}
+
+/// TX power adjustment (`enum nl80211_tx_power_setting`)
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211TxpowerSetting {
+    /// Automatically determine transmit power
+    Automatic = nl80211_tx_power_setting::NL80211_TX_POWER_AUTOMATIC as u32,
+    /// Limit TX power by the mBm parameter
+    Limited = nl80211_tx_power_setting::NL80211_TX_POWER_LIMITED as u32,
+    /// Fix TX power to the mBm parameter
+    Fixed = nl80211_tx_power_setting::NL80211_TX_POWER_FIXED as u32,
+}
+
+// Interface limit attributes (`enum nl80211_iface_limit_attrs`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211IfaceLimitAttrs {
+    /// Reserved
+    Unspec = nl80211_iface_limit_attrs::NL80211_IFACE_LIMIT_UNSPEC as u16,
+    /// Maximum number of interfaces that can be chosen from this set of interface types (`u32`)
+    Max = nl80211_iface_limit_attrs::NL80211_IFACE_LIMIT_MAX as u16,
+    /// Nested attribute containing a flag attribute for each interface type in this set
+    Types = nl80211_iface_limit_attrs::NL80211_IFACE_LIMIT_TYPES as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211IfaceLimitAttrs {}
+
+/// Interface combination attributes (`enum nl80211_if_combination_attrs`)
+///
+/// Examples:
+///     limits = [ #{STA} <= 1, #{AP} <= 1 ], matching BI, channels = 1, max = 2
+///     => allows an AP and a STA that must match BIs
+//
+///     numbers = [ #{AP, P2P-GO} <= 8 ], BI min gcd, channels = 1, max = 8,
+///     => allows 8 of AP/GO that can have BI gcd >= min gcd
+//
+///     numbers = [ #{STA} <= 2 ], channels = 2, max = 2
+///     => allows two STAs on the same or on different channels
+//
+///     numbers = [ #{STA} <= 1, #{P2P-client,P2P-GO} <= 3 ], max = 4
+///     => allows a STA plus three P2P interfaces
+//
+/// The list of these four possibilities could completely be contained
+/// within the [`Nl80211Attr::InterfaceCombinations`] attribute to indicate
+/// that any of these groups must match.
+//
+/// "Combinations" of just a single interface will not be listed here,
+/// a single interface of any valid interface type is assumed to always
+/// be possible by itself. This means that implicitly, for each valid
+/// interface type, the following group always exists:
+/// numbers = [ #{\<type>} <= 1 ], channels = 1, max = 1
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211IfCombinationAttrs {
+    /// Reserved
+    Unspec = nl80211_if_combination_attrs::NL80211_IFACE_COMB_UNSPEC as u16,
+    /// Nested attributes containing the limits for given interface types, see [`Nl80211IfaceLimitAttrs`]
+    Limits = nl80211_if_combination_attrs::NL80211_IFACE_COMB_LIMITS as u16,
+    /// `u32` attribute giving the total number of interfaces that can be created in this group
+    ///
+    /// This number doesn't apply to interfaces purely managed in software, which are listed
+    /// in a separate attribute [`Nl80211Attr::SoftwareIftypes`].
+    MaxNum = nl80211_if_combination_attrs::NL80211_IFACE_COMB_MAXNUM as u16,
+    /// Flag attribute specifying that beacon intervals within this group must be all the same even for
+    /// infrastructure and AP/GO combinations, i.e. the GO(s) must adopt the infrastructure network's
+    /// beacon interval.
+    StaApBiMatch = nl80211_if_combination_attrs::NL80211_IFACE_COMB_STA_AP_BI_MATCH as u16,
+    /// `u32` attribute specifying how many different channels may be used within this group
+    NumChannels = nl80211_if_combination_attrs::NL80211_IFACE_COMB_NUM_CHANNELS as u16,
+    /// `u32` attribute containing the bitmap of supported channel widths for radar detection
+    RadarDetectWidths = nl80211_if_combination_attrs::NL80211_IFACE_COMB_RADAR_DETECT_WIDTHS as u16,
+    /// `u32` attribute containing the bitmap of supported regulatory regions for radar detection
+    RadarDetectRegions =
+        nl80211_if_combination_attrs::NL80211_IFACE_COMB_RADAR_DETECT_REGIONS as u16,
+    /// `u32` attribute specifying the minimum GCD of different beacon intervals supported
+    /// by all the interface combinations in this group (if not present, all beacon intervals be identical).
+    BiMinGcd = nl80211_if_combination_attrs::NL80211_IFACE_COMB_BI_MIN_GCD as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211IfCombinationAttrs {}
+
+/// Values for [`Nl80211Attr::TdlsOperation`] (`enum nl80211_tdls_operation`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211TdlsOperation {
+    /// Send a TDLS discovery request.
+    DiscoveryReq = nl80211_tdls_operation::NL80211_TDLS_DISCOVERY_REQ as u16,
+    /// Setup TDLS link.
+    Setup = nl80211_tdls_operation::NL80211_TDLS_SETUP as u16,
+    /// Teardown a TDLS link which is already established.
+    Teardown = nl80211_tdls_operation::NL80211_TDLS_TEARDOWN as u16,
+    /// Enable TDLS link.
+    EnableLink = nl80211_tdls_operation::NL80211_TDLS_ENABLE_LINK as u16,
+    /// Disable TDLS link.
+    DisableLink = nl80211_tdls_operation::NL80211_TDLS_DISABLE_LINK as u16,
+}
+
+impl_flags!(
+    /// Device/driver features (`enum nl80211_feature_flags`)
+    pub Nl80211FeatureFlags: u32 {
+        /// This driver supports reflecting back TX status to the socket error queue when requested with the socket option.
+        SkTxStatus = nl80211_feature_flags::NL80211_FEATURE_SK_TX_STATUS as u32,
+        /// This driver supports IBSS with HT datarates.
+        HtIbss = nl80211_feature_flags::NL80211_FEATURE_HT_IBSS as u32,
+        /// This driver takes care of freeing up the connected inactive stations in AP mode.
+        InactivityTimer = nl80211_feature_flags::NL80211_FEATURE_INACTIVITY_TIMER as u32,
+        /// This driver has been tested to work properly to support receiving regulatory hints from cellular base stations.
+        CellBaseRegHints = nl80211_feature_flags::NL80211_FEATURE_CELL_BASE_REG_HINTS as u32,
+        /// (No longer available, only here to reserve the value for API/ABI compatibility).
+        P2pDeviceNeedsChannel = nl80211_feature_flags::NL80211_FEATURE_P2P_DEVICE_NEEDS_CHANNEL as u32,
+        /// This driver supports simultaneous authentication of equals (SAE) with user space SME ([`Nl80211Command::Authenticate`]) in station mode.
+        Sae = nl80211_feature_flags::NL80211_FEATURE_SAE as u32,
+        /// This driver supports low priority scan.
+        LowPriorityScan = nl80211_feature_flags::NL80211_FEATURE_LOW_PRIORITY_SCAN as u32,
+        /// Scan flush is supported.
+        ScanFlush = nl80211_feature_flags::NL80211_FEATURE_SCAN_FLUSH as u32,
+        /// Support scanning using an AP vif.
+        ApScan = nl80211_feature_flags::NL80211_FEATURE_AP_SCAN as u32,
+        /// The driver supports per-vif TX power setting.
+        VifTxpower = nl80211_feature_flags::NL80211_FEATURE_VIF_TXPOWER as u32,
+        /// The driver expects userspace to perform OBSS scans and generate 20/40 BSS coex reports.
+        /// This flag is used only for drivers implementing the CONNECT API, for AUTH/ASSOC it is implied.
+        NeedObssScan = nl80211_feature_flags::NL80211_FEATURE_NEED_OBSS_SCAN as u32,
+        /// P2P GO implementation supports CT Window setting.
+        P2pGoCtwin = nl80211_feature_flags::NL80211_FEATURE_P2P_GO_CTWIN as u32,
+        /// P2P GO implementation supports opportunistic powersave.
+        P2pGoOppps = nl80211_feature_flags::NL80211_FEATURE_P2P_GO_OPPPS as u32,
+        /// `cfg80211` advertises channel limits (HT40, VHT 80/160 MHz) if this flag is set.
+        AdvertiseChanLimits = nl80211_feature_flags::NL80211_FEATURE_ADVERTISE_CHAN_LIMITS as u32,
+        /// The driver supports full state transitions for AP clients.
+        ///
+        /// Without this flag (and if the driver doesn't have the AP SME in the device) the driver supports adding
+        /// stations only when they're associated and adds them in associated state (to later be transitioned into
+        /// authorized), with this flag they should be added before even sending the authentication reply
+        /// and then transitioned into authenticated, associated and authorized states using station flags.
+        ///
+        /// Note that even for drivers that support this, the default is to add stations in authenticated/associated
+        /// state, so to add unauthenticated stations the authenticated/associated bits have to be set in the mask.
+        FullApClientState = nl80211_feature_flags::NL80211_FEATURE_FULL_AP_CLIENT_STATE as u32,
+        /// This driver supports a userspace Mesh Peering Management entity which may be implemented by registering
+        /// for beacons or [`Nl80211Command::NewPeerCandidate`] events. The mesh beacon is still generated by the driver.
+        UserspaceMpm = nl80211_feature_flags::NL80211_FEATURE_USERSPACE_MPM as u32,
+        /// This driver supports an active monitor interface.
+        ///
+        /// An active monitor interface behaves like a normal monitor interface, but gets added to the driver. It ensures
+        /// that incoming unicast packets directed at the configured interface address get ACKed.
+        ActiveMonitor = nl80211_feature_flags::NL80211_FEATURE_ACTIVE_MONITOR as u32,
+        /// This driver supports dynamic channel bandwidth change (e.g., HT 20 <-> 40 MHz channel) during the lifetime of a BSS.
+        ApModeChanWidthChange = nl80211_feature_flags::NL80211_FEATURE_AP_MODE_CHAN_WIDTH_CHANGE as u32,
+        /// This device adds a DS Parameter Set IE to probe requests.
+        DsParamSetIeInProbes = nl80211_feature_flags::NL80211_FEATURE_DS_PARAM_SET_IE_IN_PROBES as u32,
+        /// This device adds a WFA TPC Report IE to probe requests.
+        TpcIeInProbes = nl80211_feature_flags::NL80211_FEATURE_WFA_TPC_IE_IN_PROBES as u32,
+        /// This device, in client mode, supports Quiet Period requests sent to it by an AP.
+        Quiet = nl80211_feature_flags::NL80211_FEATURE_QUIET as u32,
+        /// This device is capable of inserting the current tx power value into the TPC Report IE in the spectrum
+        /// management TPC Report action frame, and in the Radio Measurement Link Measurement Report action frame.
+        TxPowerInsertion = nl80211_feature_flags::NL80211_FEATURE_TX_POWER_INSERTION as u32,
+        /// This driver supports dynamic ACK timeout estimation (dynack).
+        ///
+        /// [`Nl80211Attr::WiphyDynAck`] flag attribute is used to enable dynack.
+        AcktoEstimation = nl80211_feature_flags::NL80211_FEATURE_ACKTO_ESTIMATION as u32,
+        /// Device supports static spatial multiplexing powersave, i.e. can turn off all but one chain even on HT
+        /// connections that should be using more chains.
+        StaticSmps = nl80211_feature_flags::NL80211_FEATURE_STATIC_SMPS as u32,
+        /// Device supports dynamic spatial multiplexing powersave, i.e. can turn off all but one chain and then
+        /// wake the rest up as required after, for example, RTS/CTS handshake.
+        DynamicSmps = nl80211_feature_flags::NL80211_FEATURE_DYNAMIC_SMPS as u32,
+        /// The device supports setting up WMM TSPEC sessions (TID aka TSID 0-7) with the [`Nl80211Command::AddTxTs`] command.
+        ///
+        /// Standard IEEE 802.11 TSPEC setup is not yet supported, it needs to be able to handle Block-Ack agreements
+        /// and other things.
+        SupportsWmmAdmission = nl80211_feature_flags::NL80211_FEATURE_SUPPORTS_WMM_ADMISSION as u32,
+        /// Device supports configuring the vif's MAC address upon creation.
+        ///
+        /// See 'macaddr' field in the vif_params (cfg80211.h).
+        MacOnCreate = nl80211_feature_flags::NL80211_FEATURE_MAC_ON_CREATE as u32,
+        /// Driver supports channel switching when operating as a TDLS peer.
+        TdlsChannelSwitch = nl80211_feature_flags::NL80211_FEATURE_TDLS_CHANNEL_SWITCH as u32,
+        /// This device/driver supports using a random MAC address during scan (if the device is unassociated);
+        /// the [`Nl80211ScanFlag::RandomAttr`] flag may be set for scans and the MAC address mask/value will be used.
+        ScanRandomMacAddr = nl80211_feature_flags::NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR as u32,
+        /// This device/driver supports using a random MAC address for every scan iteration during scheduled
+        /// scan (while not associated), the [`Nl80211ScanFlag::RandomAttr`] may be set for scheduled scan
+        /// and the MAC address mask/value will be used.
+        SchedScanRandomMacAddr = nl80211_feature_flags::NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR as u32,
+        /// This device/driver supports using a random MAC address for every scan iteration during "net detect",
+        /// i.e. scan in unassociated WoWLAN, the [`Nl80211ScanFlag::RandomAddr`] may be set for scheduled scan
+        /// and the MAC address mask/value will be used.
+        NdRandomMacAddr = nl80211_feature_flags::NL80211_FEATURE_ND_RANDOM_MAC_ADDR as u32,
+    }
+);
+
+/// Bit index of device/driver extended features (`enum nl80211_ext_feature_index`)
+///
+/// Returned to userspace as byte array unlike [`Nl80211FeatureFlags`] which are bitflags in a single `u32`.
+#[neli::neli_enum(serialized_type = "u32")]
+pub enum Nl80211ExtFeatureIndex {
+    /// This driver supports IBSS with VHT datarates.
+    FeatureVhtIbss = nl80211_ext_feature_index::NL80211_EXT_FEATURE_VHT_IBSS as u32,
+    /// This driver supports RRM. When featured, user can request to use RRM (see [`Nl80211Attr::UseRrm`])
+    /// with [`Nl80211Command::Associate`] and [`Nl80211Command::Connect`] requests, which will set the ASSOC_REQ_USE_RRM flag
+    /// in the association request even if [`Nl80211FeatureFlags::Quiet`] is not advertised.
+    FeatureRrm = nl80211_ext_feature_index::NL80211_EXT_FEATURE_RRM as u32,
+    /// This device supports MU-MIMO air sniffer which means that it can be configured to hear packets from certain groups
+    /// which can be configured by the [`Nl80211Attr::MuMimoGroupData`] attribute, or can be configured to follow a station
+    /// by configuring the [`Nl80211Attr::`MuMimoFollowMacAddr`] attribute.
+    MuMimoAirSniffer = nl80211_ext_feature_index::NL80211_EXT_FEATURE_MU_MIMO_AIR_SNIFFER as u32,
+    /// This driver includes the actual time the scan started in scan results event.
+    ///
+    /// The time is the TSF of the BSS that the interface that requested the scan is connected to (if available).
+    ScanStartTime = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SCAN_START_TIME as u32,
+    /// Per BSS, this driver reports the time the last beacon/probe was received.
+    ///
+    /// For a non-MLO connection, the time is the TSF of the BSS that the interface that requested the scan is
+    /// connected to (if available). For an MLO connection, the time is the TSF of the BSS corresponding with
+    /// link ID specified in the scan request (if specified).
+    BssParentTsf = nl80211_ext_feature_index::NL80211_EXT_FEATURE_BSS_PARENT_TSF as u32,
+    /// This driver supports configuration of channel dwell time.
+    SetScanDwell = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SET_SCAN_DWELL as u32,
+    /// Driver supports beacon rate configuration (AP/mesh), supporting a legacy (non-HT/VHT) rate.
+    BeaconRateLegacy = nl80211_ext_feature_index::NL80211_EXT_FEATURE_BEACON_RATE_LEGACY as u32,
+    /// Driver supports beacon rate configuration (AP/mesh) with HT rates.
+    BeaconRateHt = nl80211_ext_feature_index::NL80211_EXT_FEATURE_BEACON_RATE_HT as u32,
+    /// Driver supports beacon rate configuration (AP/mesh) with VHT rates.
+    BeaconRateVht = nl80211_ext_feature_index::NL80211_EXT_FEATURE_BEACON_RATE_VHT as u32,
+    /// This driver supports Fast Initial Link Setup with user space SME ([`Nl80211Command::Authenticate`]) in station mode.
+    FilsSta = nl80211_ext_feature_index::NL80211_EXT_FEATURE_FILS_STA as u32,
+    /// This driver supports randomized TA in [`Nl80211Command::Frame`] while not associated.
+    MgmtTxRandomTa = nl80211_ext_feature_index::NL80211_EXT_FEATURE_MGMT_TX_RANDOM_TA as u32,
+    /// This driver supports randomized TA in [`Nl80211Command::Frame`] while associated.
+    MgmtTxRandomTaConnected =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_MGMT_TX_RANDOM_TA_CONNECTED as u32,
+    /// The driver supports sched_scan for reporting BSSs with better RSSI than the current connected BSS
+    /// ([`Nl80211Attr::SchedScanRelativeRssi`]).
+    SchedScanRelativeRssi =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_SCHED_SCAN_RELATIVE_RSSI as u32,
+    /// With this driver the [`Nl80211AttrCqm::RssiThold`] attribute accepts a list of zero or more RSSI
+    /// threshold values to monitor rather than exactly one threshold.
+    CqmRssiList = nl80211_ext_feature_index::NL80211_EXT_FEATURE_CQM_RSSI_LIST as u32,
+    /// Driver SME supports FILS shared key authentication with [`Nl80211Command::Connect`].
+    FilsSkOffload = nl80211_ext_feature_index::NL80211_EXT_FEATURE_FILS_SK_OFFLOAD as u32,
+    /// Device wants to do 4-way handshake with PSK in station mode (PSK is passed as part of theuconnect and
+    /// associate commands), doing it in the host might not be supported.
+    _4WayHandshakeStaPsk =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_4WAY_HANDSHAKE_STA_PSK as u32,
+    /// Device wants to do doing 4-way handshake with 802.1X in station mode (will pass EAP frames to the host
+    /// and accept the set_pmk/del_pmk commands), doing it in the host might not be supported.
+    _4WayHandshakeSta1x =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_4WAY_HANDSHAKE_STA_1X as u32,
+    /// Driver is capable of overriding the max channel attribute in the FILS request params IE with the actual dwell time.
+    FilsMaxChannelTime =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_FILS_MAX_CHANNEL_TIME as u32,
+    /// Driver accepts broadcast probe response.
+    AcceptBcastProbeResp =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_ACCEPT_BCAST_PROBE_RESP as u32,
+    /// Driver supports sending the first probe request in each channel at rate of at least 5.5Mbps.
+    OceProbeReqHighTxRate =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_OCE_PROBE_REQ_HIGH_TX_RATE as u32,
+    /// Driver supports probe request tx deferral and suppression.
+    ProbeReqDeferralSuppression =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_OCE_PROBE_REQ_DEFERRAL_SUPPRESSION as u32,
+    /// Driver supports the [`Nl80211Mfp::Optional`] value in [`Nl80211Attr::UseMfp`].
+    MfpOptional = nl80211_ext_feature_index::NL80211_EXT_FEATURE_MFP_OPTIONAL as u32,
+    /// Driver supports low span scan.
+    LowSpanScan = nl80211_ext_feature_index::NL80211_EXT_FEATURE_LOW_SPAN_SCAN as u32,
+    /// Driver supports low power scan.
+    LowPowerScan = nl80211_ext_feature_index::NL80211_EXT_FEATURE_LOW_POWER_SCAN as u32,
+    /// Driver supports high accuracy scan.
+    HighAccuracyScan = nl80211_ext_feature_index::NL80211_EXT_FEATURE_HIGH_ACCURACY_SCAN as u32,
+    /// HW/driver will offload DFS actions.
+    ///
+    ///  Device or driver will do all DFS-related actions by itself, informing user-space about CAC progress,
+    /// radar detection event, channel change triggered by radar detection event. No need to start CAC from
+    /// user-space, no need to react to "radar detected" event.
+    DfsOffload = nl80211_ext_feature_index::NL80211_EXT_FEATURE_DFS_OFFLOAD as u32,
+    /// Driver supports sending and receiving control port frames over nl80211 instead of the netdevice.
+    ControlPortOverNl802211 =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211 as u32,
+    /// This driver/device supports (average) ACK signal strength reporting.
+    AckSignalSupport = nl80211_ext_feature_index::NL80211_EXT_FEATURE_ACK_SIGNAL_SUPPORT as u32,
+    /// Backward-compatible ID
+    DataAckSignalSupport =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_DATA_ACK_SIGNAL_SUPPORT as u32,
+    /// Driver supports FQ-CoDel-enabled intermediate TXQs.
+    Txqs = nl80211_ext_feature_index::NL80211_EXT_FEATURE_TXQS as u32,
+    /// Driver/device supports randomizing the SN in probe request frames if requested by [`Nl80211ScanFlag::RandomSn`].
+    ScanRandomSn = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SCAN_RANDOM_SN as u32,
+    /// Driver/device can omit all data except for supported rates from the probe request content if requested
+    /// by the [`Nl80211ScanFlag::MinPreqContent`] flag.
+    ScanMinPreqContent =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_SCAN_MIN_PREQ_CONTENT as u32,
+    /// Driver/device confirm that they are able to rekey an in-use key correctly.
+    ///
+    /// Userspace must not rekey PTK keys if this flag is not set. Ignoring this can leak clear text
+    /// packets and/or freeze the connection.
+    CanReplacePtk0 = nl80211_ext_feature_index::NL80211_EXT_FEATURE_CAN_REPLACE_PTK0 as u32,
+    /// Driver supports enabling fine timing measurement responder role.
+    EnableFtmResponder = nl80211_ext_feature_index::NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER as u32,
+    /// Driver supports getting airtime fairness for transmitted packets and has enabled airtime fairness scheduling.
+    AirtimeFairness = nl80211_ext_feature_index::NL80211_EXT_FEATURE_AIRTIME_FAIRNESS as u32,
+    /// Driver/device supports PMKSA caching (set/del PMKSA operations) in AP mode.
+    ApPmksaCaching = nl80211_ext_feature_index::NL80211_EXT_FEATURE_AP_PMKSA_CACHING as u32,
+    /// Obsolete.
+    SchedScanBandSpecificRssiThold =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_SCHED_SCAN_BAND_SPECIFIC_RSSI_THOLD as u32,
+    /// Driver supports "Extended Key ID for Individually Addressed Frames" from IEEE802.11-2016.
+    KeyId = nl80211_ext_feature_index::NL80211_EXT_FEATURE_EXT_KEY_ID as u32,
+    /// This driver supports controlling TX power to a station.
+    StaTxPwr = nl80211_ext_feature_index::NL80211_EXT_FEATURE_STA_TX_PWR as u32,
+    /// Device wants to do SAE authentication in station mode (SAE password is passed as part of the connect command).
+    SaeOffload = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SAE_OFFLOAD as u32,
+    /// The driver supports a single netdev with VLAN tagged frames and separate VLAN-specific
+    /// netdevs added using vconfig similarly to the Ethernet case.
+    VlanOffload = nl80211_ext_feature_index::NL80211_EXT_FEATURE_VLAN_OFFLOAD as u32,
+    /// The driver supports the Airtime Queue Limit (AQL) feature, which prevents bufferbloat by using the
+    /// expected transmission time to limit the amount of data buffered in the hardware.
+    Aql = nl80211_ext_feature_index::NL80211_EXT_FEATURE_AQL as u32,
+    /// The driver supports Beacon protection and can receive key configuration for BIGTK using key indexes 6 and 7.
+    BeaconProtection = nl80211_ext_feature_index::NL80211_EXT_FEATURE_BEACON_PROTECTION as u32,
+    /// The driver can disable the forwarding of preauth frames over the control port. They are then handled as ordinary data frames.
+    ControlPortNoPreauth =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_CONTROL_PORT_NO_PREAUTH as u32,
+    /// Driver supports protected TWT frames.
+    ProtectedTwt = nl80211_ext_feature_index::NL80211_EXT_FEATURE_PROTECTED_TWT as u32,
+    /// The driver supports removing stations in IBSS mode, essentially by dropping their state.
+    DelIbssSta = nl80211_ext_feature_index::NL80211_EXT_FEATURE_DEL_IBSS_STA as u32,
+    /// Management frame registrations are possible for multicast frames and those will be reported properly.
+    MulticastRegistrations =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_MULTICAST_REGISTRATIONS as u32,
+    /// The driver supports Beacon protection as a client only and cannot transmit protected beacons.
+    BeaconProtectionClient =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_BEACON_PROTECTION_CLIENT as u32,
+    /// This driver supports receiving and reporting scan request with [`Nl80211Attr::ScanFreqKhz`].
+    ///
+    /// In order to report [`Nl80211Attr::ScanFreqKhz`], [`Nl80211ScanFlag::FreqKhz`] must be included in the scan request.
+    ScanFreqKhz = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SCAN_FREQ_KHZ as u32,
+    /// The driver can report tx status for control port over nl80211 TX operations.
+    ControlPortOverNl80211TxStatus =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211_TX_STATUS as u32,
+    /// Driver supports Operating Channel Validation (OCV) when using driver's SME for RSNA handshakes.
+    OperatingChannelValidation =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_OPERATING_CHANNEL_VALIDATION as u32,
+    /// Device wants to do 4-way handshake with PSK in AP mode (PSK is passed as part of the start AP command).
+    _4WayHandshakeApPsk =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_4WAY_HANDSHAKE_AP_PSK as u32,
+    /// Device wants to do SAE authentication in AP mode (SAE password is passed as part of the start AP command).
+    SaeOffloadAp = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SAE_OFFLOAD_AP as u32,
+    /// Driver/device supports FILS discovery frames transmission.
+    FilsDiscovery = nl80211_ext_feature_index::NL80211_EXT_FEATURE_FILS_DISCOVERY as u32,
+    /// Driver/device supports unsolicited broadcast probe response transmission.
+    UnsolBcastProbeResp =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_UNSOL_BCAST_PROBE_RESP as u32,
+    /// Driver supports beacon rate configuration (AP/mesh) with HE rates.
+    BeaconRateHe = nl80211_ext_feature_index::NL80211_EXT_FEATURE_BEACON_RATE_HE as u32,
+    /// Device supports secure LTF measurement exchange protocol.
+    SecureLtf = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SECURE_LTF as u32,
+    /// Device supports secure RTT measurement exchange protocol.
+    SecureRtt = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SECURE_RTT as u32,
+    /// Device supports management frame protection for all management frames exchanged during the negotiation
+    /// and range measurement procedure.
+    ProtRangeNegoAndMeasure =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE as u32,
+    /// The driver supports BSS color collision detection and change announcemnts.
+    BssColor = nl80211_ext_feature_index::NL80211_EXT_FEATURE_BSS_COLOR as u32,
+    /// Driver running in AP mode supports FILS encryption and decryption for (Re)Association Request and Response frames.
+    ///
+    /// Userspace has to share FILS AAD details to the driver by using [`Nl80211Command::SetFilsAad`].
+    FilsCryptoOffload = nl80211_ext_feature_index::NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD as u32,
+    /// Device supports background radar/CAC detection.
+    RadarBackground = nl80211_ext_feature_index::NL80211_EXT_FEATURE_RADAR_BACKGROUND as u32,
+    /// Device can perform a MAC address change without having to bring the underlying network device down first.
+    ///
+    /// For example, in station mode this can be used to vary the origin MAC address prior to a connection to a new
+    /// AP for privacy or other reasons. Note that certain driver specific restrictions might apply, e.g. no scans
+    /// in progress, no offchannel operations in progress, and no active connections.
+    PoweredAddrChange = nl80211_ext_feature_index::NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE as u32,
+    /// Driver supports preamble puncturing in AP mode.
+    Punct = nl80211_ext_feature_index::NL80211_EXT_FEATURE_PUNCT as u32,
+    /// Device supports NAN Pairing which enables authentication, data encryption and message integrity.
+    SecureNan = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SECURE_NAN as u32,
+    /// Device supports randomized TA in authentication and deauthentication frames sent to unassociated peer using [`Nl80211Command::Frame`].
+    AuthAndDeauthRandomTa =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_AUTH_AND_DEAUTH_RANDOM_TA as u32,
+    /// Driver/Device wants to do OWE DH IE handling in station mode.
+    OweOffload = nl80211_ext_feature_index::NL80211_EXT_FEATURE_OWE_OFFLOAD as u32,
+    /// Driver/Device wants to do OWE DH IE handling in AP mode.
+    OweOffloadAp = nl80211_ext_feature_index::NL80211_EXT_FEATURE_OWE_OFFLOAD_AP as u32,
+    /// The device supports peer-to-peer or adhoc operation on DFS channels under the control of a concurrent
+    /// DFS master on the same channel as described in FCC-594280 D01 (Section B.3).
+    ///
+    /// This, for example, allows P2P GO and P2P clients to operate on DFS channels as long as there's a
+    /// concurrent BSS connection.
+    DfsConcurrent = nl80211_ext_feature_index::NL80211_EXT_FEATURE_DFS_CONCURRENT as u32,
+    /// The driver has support for SPP (signaling and payload protected). A-MSDUs and this shall be advertised in the RSNXE.
+    SppAmsduSupport = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SPP_AMSDU_SUPPORT as u32,
+    // Driver supports beacon rate configuration (AP/mesh) with EHT rates.
+    BeaconRateEht = nl80211_ext_feature_index::NL80211_EXT_FEATURE_BEACON_RATE_EHT as u32,
+    /// Driver supports Enhanced Privacy Protection Key Exchange (EPPKE) with user space SME ([`Nl80211Command::Authenticate`]) in non-AP STA mode.
+    Eppke = nl80211_ext_feature_index::NL80211_EXT_FEATURE_EPPKE as u32,
+    /// This specifies that the driver supports encryption of (Re)Association Request and Response frames in both non‑AP STA
+    /// and AP mode as specified in IEEE P802.11bi/D3.0, 12.16.6.
+    AssocFrameEncryption =
+        nl80211_ext_feature_index::NL80211_EXT_FEATURE_ASSOC_FRAME_ENCRYPTION as u32,
+    /// Driver supports IEEE 802.1X authentication utilizing Authentication frames with user space SME ([`Nl80211Command::Authenticate`])
+    /// in non-AP STA mode, as specified in IEEE P802.11bi/D4.0, 12.16.5.
+    Ieee8021xAuth = nl80211_ext_feature_index::NL80211_EXT_FEATURE_IEEE8021X_AUTH as u32,
+    // v7.2+
+    /// Driver supports MAC address filtering during remain-on-channel.
+    ///
+    /// When [`Nl80211Attr::Mac`] is provided with [`Nl80211Command::RemainOnChannel`], the driver will forward frames with
+    /// a matching MAC address to userspace during the off-channel period.
+    RocAddrFilter = nl80211_ext_feature_index::NL80211_EXT_FEATURE_ROC_ADDR_FILTER as u32,
+    /// Driver supports installing the LTF key seed via [`Nl80211KeyAttributes::LtfSeed`].
+    ///
+    /// The seed is used to generate secure LTF keys for secure LTF measurement sessions.
+    SetKeyLtfSeed = nl80211_ext_feature_index::NL80211_EXT_FEATURE_SET_KEY_LTF_SEED as u32,
+}
+
+impl_flags!(
+    /// Scan request control flags (`enum nl80211_scan_flags`)
+    pub Nl80211ScanFlag: u32 {
+        /// Scan request has low priority. Driver must indicate support in [`Nl80211Attr::FeatureFlags`]
+        LowPriority = nl80211_scan_flags::NL80211_SCAN_FLAG_LOW_PRIORITY as u32,
+        /// Flush cache before scanning
+        Flush = nl80211_scan_flags::NL80211_SCAN_FLAG_FLUSH as u32,
+        /// Force a scan even if the interface is configured as AP and the beaconing has already been configured.
+        ///
+        /// This attribute is dangerous because will destroy stations performance as a lot of frames
+        /// will be lost while scanning off-channel, therefore it must be used only when really needed
+        Ap = nl80211_scan_flags::NL80211_SCAN_FLAG_AP as u32,
+        /// Use a random MAC address for this scan (or for scheduled scan, a different one for every scan iteration).
+        ///
+        /// When the flag is set, depending on device capabilities the [`Nl80211Attr::Mac`] and [`Nl80211Attr::MacMask`]
+        /// attributes may also be given in which case only the masked bits will be preserved from the MAC address
+        /// and the remainder randomised. If the attributes are not given full randomisation (46 bits,
+        /// locally administered 1, multicast 0) is assumed.
+        ///
+        /// This flag must not be requested when the feature isn't supported, check [`Nl80211Attr::FeatureFlags`] for the device.
+        RandomAddr = nl80211_scan_flags::NL80211_SCAN_FLAG_RANDOM_ADDR as u32,
+        /// Fill the dwell time in the FILS request parameters IE in the probe request
+        FilsMaxChannelTime = nl80211_scan_flags::NL80211_SCAN_FLAG_FILS_MAX_CHANNEL_TIME as u32,
+        /// Accept broadcast probe responses
+        AcceptBcastProbeResp = nl80211_scan_flags::NL80211_SCAN_FLAG_ACCEPT_BCAST_PROBE_RESP as u32,
+        /// Send probe request frames at rate of at least 5.5M. In case non-OCE AP is discovered in the channel,
+        /// only the first probe req in the channel will be sent in high rate.
+        OceProbeReqHighTxRate = nl80211_scan_flags::NL80211_SCAN_FLAG_OCE_PROBE_REQ_HIGH_TX_RATE as u32,
+        /// Allow probe request TX deferral (dot11FILSProbeDelay shall be set to 15ms) and suppression
+        /// (if it has received a broadcast Probe Response frame, Beacon frame or FILS Discovery frame
+        /// from an AP that the STA considers a suitable candidate for (re-)association - suitable in terms of
+        /// SSID and/or RSSI.
+        OceProbeReqDeferralSuppression = nl80211_scan_flags::NL80211_SCAN_FLAG_OCE_PROBE_REQ_DEFERRAL_SUPPRESSION as u32,
+        /// Span corresponds to the total time taken to accomplish the scan. Thus, this flag intends the
+        /// driver to perform the scan request with lesser span/duration. It is specific to the driver
+        /// implementations on how this is accomplished. Scan accuracy may be impacted with this flag.
+        LowSpan = nl80211_scan_flags::NL80211_SCAN_FLAG_LOW_SPAN as u32,
+        /// This flag intends the scan attempts to consume optimal possible power. Drivers can resort to
+        /// their specific means to optimize the power. Scan accuracy may be impacted with this flag.
+        LowPower = nl80211_scan_flags::NL80211_SCAN_FLAG_LOW_POWER as u32,
+        /// Accuracy here intends to the extent of scan results obtained. Thus [`ScanFlag::HighAccuracy`] scan flag aims
+        /// to get maximum possible scan results. This flag hints the driver to use the best possible scan
+        /// configuration to improve the accuracy in scanning. Latency and power use may be impacted with
+        /// this flag.
+        HighAccuracy = nl80211_scan_flags::NL80211_SCAN_FLAG_HIGH_ACCURACY as u32,
+        /// Randomize the sequence number in probe request frames from this scan to avoid correlation/tracking
+        /// being possible.
+        RandomSn = nl80211_scan_flags::NL80211_SCAN_FLAG_RANDOM_SN as u32,
+        /// Minimize probe request content to only have supported rates and no additional capabilities
+        /// (unless added by userspace explicitly).
+        MinPreqContent = nl80211_scan_flags::NL80211_SCAN_FLAG_MIN_PREQ_CONTENT as u32,
+        /// Report scan results with [`Nl80211Attr::ScanFreqKhz`]. This also means [`Nl80211Attr::ScanFrequencies`]
+        /// will not be included.
+        FreqKhz = nl80211_scan_flags::NL80211_SCAN_FLAG_FREQ_KHZ as u32,
+        /// Scan for collocated APs reported by 2.4/5 GHz APs.
+        ///
+        /// When the flag is set, the scan logic will use the information from the RNR element found in beacons/probe
+        /// responses received on the 2.4/5 GHz channels to actively scan only the 6 GHz channels on which APs are
+        /// expected to be found.
+        ///
+        /// Note that when not set, the scan logic would scan all 6 GHz channels, but since transmission of probe requests
+        /// on non-PSC channels is limited, it is highly likely that these channels would passively be scanned. Also note
+        /// that when the flag is set, in addition to the colocated APs, PSC channels would also be scanned if the user
+        /// space has asked for it.
+        Colocated6GHz = nl80211_scan_flags::NL80211_SCAN_FLAG_COLOCATED_6GHZ as u32,
+    }
+);
+
+/// NAN function attributes (`enum nl80211_nan_func_attributes`)
+#[neli::neli_enum(serialized_type = "u8")]
+pub enum Nl80211NanFuncAttributes {
+    /// `enum nl80211_nan_function_type` (`u8`)
+    Type = nl80211_nan_func_attributes::NL80211_NAN_FUNC_TYPE as u8,
+    /// 6 bytes of the service ID hash as specified in NAN spec. This is a binary attribute.
+    ServiceId = nl80211_nan_func_attributes::NL80211_NAN_FUNC_SERVICE_ID as u8,
+    /// Relevant if the function's type is publish.
+    ///
+    /// Defines the transmission type for the publish Service Discovery Frame, see `enum nl80211_nan_publish_type`.
+    /// Its type is `u8`.
+    PublishType = nl80211_nan_func_attributes::NL80211_NAN_FUNC_PUBLISH_TYPE as u8,
+    /// Relevant if the function is a solicited publish. Should the solicited publish Service Discovery Frame be sent to
+    /// the NAN Broadcast address. This is a flag.
+    PublishBcast = nl80211_nan_func_attributes::NL80211_NAN_FUNC_PUBLISH_BCAST as u8,
+    /// Relevant if the function's type is subscribe. Is the subscribe active. This is a flag.
+    SubscribeActive = nl80211_nan_func_attributes::NL80211_NAN_FUNC_SUBSCRIBE_ACTIVE as u8,
+    /// Relevant if the function's type is follow up. The instance ID for the follow up Service Discovery Frame. This is `u8`.
+    FollowUpId = nl80211_nan_func_attributes::NL80211_NAN_FUNC_FOLLOW_UP_ID as u8,
+    /// Relevant if the function's type is follow up. This is a `u8`. The requester instance ID for the follow up Service Discovery Frame.
+    FollowUpReqId = nl80211_nan_func_attributes::NL80211_NAN_FUNC_FOLLOW_UP_REQ_ID as u8,
+    /// The MAC address of the recipient of the follow up Service Discovery Frame. This is a binary attribute.
+    FollowUpDest = nl80211_nan_func_attributes::NL80211_NAN_FUNC_FOLLOW_UP_DEST as u8,
+    /// Is this function limited for devices in a close range. The range itself (RSSI) is defined by the device. This is a flag.
+    CloseRange = nl80211_nan_func_attributes::NL80211_NAN_FUNC_CLOSE_RANGE as u8,
+    /// Strictly positive number of DWs this function should stay active. If not present infinite TTL is assumed. This is a `u32`.
+    Ttl = nl80211_nan_func_attributes::NL80211_NAN_FUNC_TTL as u8,
+    /// Array of bytes describing the service specific info. This is a binary attribute.
+    ServiceInfo = nl80211_nan_func_attributes::NL80211_NAN_FUNC_SERVICE_INFO as u8,
+    /// Service Receive Filter. This is a nested attribute. See `enum nl80211_nan_srf_attributes`.
+    Srf = nl80211_nan_func_attributes::NL80211_NAN_FUNC_SRF as u8,
+    /// Receive Matching filter. This is a nested attribute. It is a list of binary values.
+    RxMatchFilter = nl80211_nan_func_attributes::NL80211_NAN_FUNC_RX_MATCH_FILTER as u8,
+    /// Transmit Matching filter. This is a nested attribute. It is a list of binary values.
+    TxMatchFilter = nl80211_nan_func_attributes::NL80211_NAN_FUNC_TX_MATCH_FILTER as u8,
+    /// The instance ID of the function. Its type is `u8` and it cannot be 0.
+    InstanceId = nl80211_nan_func_attributes::NL80211_NAN_FUNC_INSTANCE_ID as u8,
+    /// NAN function termination reason. See `enum nl80211_nan_func_term_reason`.
+    TermReason = nl80211_nan_func_attributes::NL80211_NAN_FUNC_TERM_REASON as u8,
+}
+
+/// Wiphy radio attributes (`enum nl80211_wiphy_radio_attrs`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211WiphyRadioAttrs {
+    /// Invalid.
+    Invalid = nl80211_wiphy_radio_attrs::__NL80211_WIPHY_RADIO_ATTR_INVALID as u16,
+    /// Index of this radio (`u32`).
+    Index = nl80211_wiphy_radio_attrs::NL80211_WIPHY_RADIO_ATTR_INDEX as u16,
+    /// Frequency range supported by this radio. Attribute may be present multiple times.
+    FreqRange = nl80211_wiphy_radio_attrs::NL80211_WIPHY_RADIO_ATTR_FREQ_RANGE as u16,
+    /// Supported interface combination for this radio.
+    ///
+    /// Attribute may be present multiple times and contains attributes defined in [`Nl80211IfCombinationAttrs`].
+    InterfaceCombination =
+        nl80211_wiphy_radio_attrs::NL80211_WIPHY_RADIO_ATTR_INTERFACE_COMBINATION as u16,
+    /// Bitmask (`u32`) of antennas connected to this radio.
+    AntennaMask = nl80211_wiphy_radio_attrs::NL80211_WIPHY_RADIO_ATTR_ANTENNA_MASK as u16,
+    /// RTS threshold (u32) of this radio.
+    RtsThreshold = nl80211_wiphy_radio_attrs::NL80211_WIPHY_RADIO_ATTR_RTS_THRESHOLD as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211WiphyRadioAttrs {}
+
+/// Wiphy radio frequency range (`enum nl80211_wiphy_radio_freq_range`)
+#[neli::neli_enum(serialized_type = "u16")]
+pub enum Nl80211WiphyRadioFreqRange {
+    /// Invalid.
+    Invalid = nl80211_wiphy_radio_freq_range::__NL80211_WIPHY_RADIO_FREQ_ATTR_INVALID as u16,
+    /// Frequency range start (`u32`). The unit is kHz.
+    Start = nl80211_wiphy_radio_freq_range::NL80211_WIPHY_RADIO_FREQ_ATTR_START as u16,
+    /// Frequency range end (`u32`). The unit is kHz.
+    End = nl80211_wiphy_radio_freq_range::NL80211_WIPHY_RADIO_FREQ_ATTR_END as u16,
+}
+impl neli::consts::genl::NlAttrType for Nl80211WiphyRadioFreqRange {}
